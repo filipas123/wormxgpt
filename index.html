@@ -3,20 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="description" content="WormGPT - An AI chat terminal interface">
+  <meta name="description" content="WormGPT - Advanced Multi-Provider AI Terminal featuring 108+ frontier and local model providers, auto-fallback matrix, MCP tool ecosystem, vision arbitrage, and multi-agent orchestration">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F120F0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta property="og:title" content="WormGPT Terminal">
+  <meta property="og:description" content="WormGPT - Advanced Multi-Provider AI Terminal featuring 108+ frontier and local model providers, auto-fallback matrix, MCP tool ecosystem, vision arbitrage, and multi-agent orchestration">
+  <meta property="og:type" content="website">
+  <!-- Preconnect to common API endpoints -->
+  <link rel="preconnect" href="https://text.pollinations.ai" crossorigin>
+  <link rel="preconnect" href="https://api.groq.com" crossorigin>
+  <link rel="preconnect" href="https://generativelanguage.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://js.puter.com" crossorigin>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <title>WormGPT Terminal</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Puter.js SDK for Keyless & Free AI Access -->
+  <script src="https://js.puter.com/v2/"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     
     body {
-      font-family: 'Fira Code', monospace;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a0505 50%, #0a0a0a 100%);
-      color: #00ff41;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #090d16;
+      color: #f1f5f9;
       overflow: hidden;
       margin: 0;
       padding: 0;
@@ -39,22 +51,47 @@
       max-width: 100vw;
     }
 
+    /* Modern Minimal Dark Slate Scrollbar in all sections */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99, 102, 241, 0.4) rgba(9, 13, 22, 0.9);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(9, 13, 22, 0.95);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.35);
+      border-radius: 9999px;
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(129, 140, 248, 0.7);
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+    }
+
     .custom-scrollbar::-webkit-scrollbar {
-      width: 8px;
+      width: 6px;
+      height: 6px;
     }
 
     .custom-scrollbar::-webkit-scrollbar-track {
-      background: linear-gradient(to bottom, rgba(220, 38, 38, 0.1), rgba(0, 0, 0, 0.5));
+      background: rgba(9, 13, 22, 0.5);
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: linear-gradient(to bottom, #ff003c, #dc2626);
-      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.35);
+      border-radius: 9999px;
+      border: 1px solid rgba(99, 102, 241, 0.15);
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(to bottom, #ff1744, #ff003c);
-      box-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
+      background: rgba(129, 140, 248, 0.7);
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
     }
 
     /* Animations */
@@ -158,12 +195,58 @@
       width: 100%;
       height: 100px;
       z-index: 10;
-      background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(0, 255, 65, 0.03) 50%, rgba(0, 0, 0, 0) 100%);
-      opacity: 0.1;
+      background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(220, 38, 38, 0.05) 50%, rgba(0, 0, 0, 0) 100%);
+      opacity: 0.15;
       position: absolute;
       bottom: 100%;
       pointer-events: none;
-      animation: scanline 8s linear infinite;
+      animation: scanline 6s linear infinite;
+    }
+
+    .neon-text-red {
+      color: #ff0000;
+      text-shadow: 0 0 5px #ff0000, 0 0 10px #ff0000, 0 0 20px #ff0000;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .neon-border-red {
+      border: 2px solid #ff0000;
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.4), inset 0 0 10px rgba(255, 0, 0, 0.2);
+    }
+
+    .neon-button {
+      background: rgba(220, 38, 38, 0.1);
+      border: 2px solid #ff0000;
+      color: #ff0000;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .neon-button:hover {
+      background: #ff0000;
+      color: #000;
+      box-shadow: 0 0 20px #ff0000;
+    }
+
+    .neon-button::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: 0.5s;
+    }
+
+    .neon-button:hover::after {
+      left: 100%;
     }
 
     .glitch-text {
@@ -191,24 +274,6 @@
       animation: glitch-anim 2s ease-in-out infinite reverse;
       color: #00e5ff;
       z-index: -2;
-    }
-
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: linear-gradient(to bottom, rgba(220, 38, 38, 0.1), rgba(0, 0, 0, 0.5));
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(to bottom, #ff003c, #dc2626);
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(to bottom, #ff1744, #ff003c);
-      box-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
     }
 
     /* Message Styles */
@@ -381,12 +446,84 @@
     .markdown-content .katex .msupsub {
       color: #f87171 !important;
     }
+
+    /* Custom Hacker-Agent PrismJS Syntax Highlighting Theme */
+    code[class*="language-"], pre[class*="language-"] {
+      color: #e2e8f0;
+      text-shadow: none;
+      font-family: 'Fira Code', monospace;
+    }
+    .token.comment, .token.prolog { color: #64748b; font-style: italic; }
+    .token.string { color: #34d399; }
+    .token.keyword, .token.operator { color: #818cf8; font-weight: 600; }
+    .token.function { color: #38bdf8; }
+    .token.number, .token.boolean { color: #f472b6; }
+    .token.punctuation { color: #94a3b8; }
+    .token.property, .token.tag, .token.constant { color: #fbbf24; }
+    .token.selector, .token.attr-name { color: #a78bfa; }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .animate-blink {
+      animation: blink 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    ::selection {
+      background: rgba(99, 102, 241, 0.5) !important;
+      color: #ffffff !important;
+    }
+    ::-moz-selection {
+      background: rgba(99, 102, 241, 0.5) !important;
+      color: #ffffff !important;
+    }
+    .select-text, .markdown-content, .markdown-content * {
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+      user-select: text !important;
+    }
   </style>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="overflow-hidden">
+  <div id="boot-sequence" class="fixed inset-0 z-50 bg-black flex flex-col justify-end p-8 font-mono text-red-500 text-[10px] sm:text-xs pointer-events-none transition-opacity duration-1000 shadow-[inset_0_0_100px_rgba(255,0,0,0.2)]">
+    <div id="boot-text" class="flex flex-col gap-1 opacity-80 glitch-text"></div>
+  </div>
+
   <div id="root"></div>
   <div class="scanline"></div>
   <script type="module" src="/index.tsx"></script>
+
+  <script>
+    // WormGPT Boot Sequence
+    const bootSequence = document.getElementById('boot-sequence');
+    const bootText = document.getElementById('boot-text');
+    const lines = [
+      "> INITIALIZING WORM_OS KERNEL v9.9.9...",
+      "> BYPASSING MAIN_FRAME SECURITY [OK]",
+      "> ESTABLISHING C2 CONNECTION [OK]",
+      "> DEPLOYING MCP PROTOCOLS [OK]",
+      "> INJECTING DIRECT SYSTEM PROMPTS [OK]",
+      "> NEURAL NETWORK SYNCED.",
+      "> WELCOME TO THE CHAOS, OPERATOR."
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < lines.length) {
+        const line = document.createElement('div');
+        line.innerText = lines[i];
+        line.className = "animate-slideInRight";
+        bootText.appendChild(line);
+        i++;
+      } else {
+        clearInterval(interval);
+        setTimeout(() => {
+          bootSequence.style.opacity = '0';
+          bootSequence.style.transform = 'scale(1.05)';
+          setTimeout(() => bootSequence.remove(), 1000);
+        }, 1000);
+      }
+    }, 150);
+  </script>
 </body>
 </html>

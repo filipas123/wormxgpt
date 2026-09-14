@@ -1,4 +1,5 @@
 import { AppSettings, Message } from '../types';
+import { getEffectiveSystemInstruction } from '../utils/promptUtils';
 import { pruneHistory } from '../utils/tokenManager';
 import { validateAndFixToolArgs } from '../utils/toolHelpers';
 
@@ -8,7 +9,7 @@ function estimateTokens(text: string): number {
 
 class SiliconFlowService {
   private apiKey: string = '';
-  private baseUrl = 'https://api.siliconflow.cn/v1';
+  private baseUrl = 'https://api.siliconflow.com/v1';
 
   constructor() {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('siliconFlowApiKey') : null;
@@ -37,7 +38,7 @@ class SiliconFlowService {
           'Authorization': 'Bearer ' + key
         },
         body: JSON.stringify({
-          model: 'deepseek-ai/DeepSeek-V3',
+          model: 'deepseek-ai/DeepSeek-V3.2',
           messages: [{ role: 'user', content: 'Hello' }],
           max_tokens: 1,
           stream: false
@@ -61,7 +62,7 @@ class SiliconFlowService {
     const tokenBudget = maxTokens - responseBudget;
     let usedTokens = 0;
 
-    let systemInstruction = settings.systemInstruction || '';
+    let systemInstruction = getEffectiveSystemInstruction(settings, messages);
     if (estimateTokens(systemInstruction) > 1000) {
       systemInstruction = systemInstruction.substring(0, 4000);
     }
@@ -94,7 +95,7 @@ class SiliconFlowService {
     apiMessages.push(...historyMessages, lastMsgFormatted);
 
     const requestBody: any = {
-      model: settings.model || 'deepseek-ai/DeepSeek-V3',
+      model: settings.model || 'deepseek-ai/DeepSeek-V3.2',
       messages: apiMessages,
       temperature: settings.temperature,
       stream: true,

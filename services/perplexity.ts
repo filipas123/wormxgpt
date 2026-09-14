@@ -1,4 +1,5 @@
 import { Message, AppSettings } from '../types';
+import { getEffectiveSystemInstruction } from '../utils/promptUtils';
 import { pruneHistory } from '../utils/tokenManager';
 
 class PerplexityService {
@@ -54,7 +55,7 @@ class PerplexityService {
     const requestBody = {
       model: settings.model,
       messages: [
-        { role: 'system', content: settings.systemInstruction },
+        { role: 'system', content: getEffectiveSystemInstruction(settings, messages) },
         ...formattedMessages
       ],
       temperature: settings.temperature,
@@ -103,6 +104,21 @@ class PerplexityService {
           const delta = json.choices[0]?.delta;
           if (delta?.content) yield delta.content;
         } catch (e) {}
+      }
+    }
+  }
+  async *streamChat(
+    settings: AppSettings,
+    messages: Message[],
+    signal?: AbortSignal
+  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+    if (signal?.aborted) return;
+    let accumulatedText = '';
+    for await (const chunk of this.generateContentStream(messages, settings)) {
+      if (signal?.aborted) return;
+      if (typeof chunk === 'string') {
+        accumulatedText += chunk;
+        yield { text: accumulatedText, images: [] };
       }
     }
   }

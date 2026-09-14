@@ -13,7 +13,44 @@ export { perplexityService } from './perplexity';
 export { xaiService } from './xai';
 export { moonshotService } from './moonshot';
 export { ollamaService } from './ollama';
+export { tinyfishService } from './tinyfish';
 export { ATTACHED_TOOLS, executeToolCall, validateAndFixToolArgs, TOOL_CATEGORIES } from './tools';
 export { pluginRegistry } from './plugins';
 export { mcpService } from './mcp';
 export { VoiceModeService } from './voiceMode';
+export { APP_INTEGRATIONS, integrationRegistry, secmailIntegration, autofillIntegration } from './integrations';
+export type { AppIntegration } from './integrations';
+export { supabaseAuth } from './supabaseAuth';
+export { cacheService } from './cache';
+export { sessionSync } from './sessionSync';
+export { a2aService } from './a2a';
+export type { A2AAgentCard, A2AMessage, A2ATask, A2AEvent } from './a2a';
+export { promptCacheService } from './promptCache';
+export type { PromptCacheStats } from './promptCache';
+export { agentEngine } from './agent_engine';
+export { memoryService } from './memory';
+
+// ── New Provider Services ────────────────────────────────────────────────────
+export { OpenAICompatibleService } from './openaiCompatible';
+export { cohereService } from './cohere';
+export { nvidiaService } from './nvidia';
+export { fireworksService } from './fireworks';
+export { sambanovaService } from './sambanova';
+export { hyperbolicService } from './hyperbolic';
+export { huggingfaceService } from './huggingface';
+export { deepinfraService } from './deepinfra';
+export { novitaService } from './novita';
+export { featherlessService } from './featherless';
+export { lambdaaiService } from './lambdaai';
+export { nebiusService } from './nebius';
+export { wisGateService } from './wisgate';
+export { uncloseaiService } from './uncloseai';
+export { llm7Service } from './llm7';
+export { puterService } from './puter';
+
+// ── Core Infrastructure ──────────────────────────────────────────────────────
+export { providerRouter, initializeProviderRouter } from './providerRouter';
+export type { ProviderService } from './providerRouter';
+export { multiAgentOrchestrator } from './multiAgent';
+export { providerRegistry } from './providers/registry';
+export * from './providers/types';

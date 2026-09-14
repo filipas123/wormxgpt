@@ -1,6 +1,7 @@
 import { Message, AppSettings } from '../types';
 import { pruneHistory } from '../utils/tokenManager';
 import { ATTACHED_TOOLS, validateAndFixToolArgs } from './tools';
+import { getEffectiveSystemInstruction } from '../utils/promptUtils';
 
 class MistralService {
   private apiKey: string | null = null;
@@ -19,7 +20,7 @@ class MistralService {
           'Authorization': `Bearer ${key}`
         },
         body: JSON.stringify({
-          model: 'mistral-small',
+          model: 'mistral-small-latest',
           messages: [{ role: 'user', content: 'Hello' }],
           max_tokens: 1,
           stream: false
@@ -96,7 +97,7 @@ class MistralService {
     const requestBody = {
       model: settings.model,
       messages: [
-        { role: 'system', content: settings.systemInstruction },
+        { role: 'system', content: getEffectiveSystemInstruction(settings, messages) },
         ...formattedMessages
       ],
       temperature: settings.temperature,
@@ -175,6 +176,21 @@ class MistralService {
         const fixedArgs = validateAndFixToolArgs(tc.name, tc.args);
         onToolCall?.(tc.name, fixedArgs);
         yield { type: 'tool_call', name: tc.name, args: fixedArgs, callId: tc.id };
+      }
+    }
+  }
+  async *streamChat(
+    settings: AppSettings,
+    messages: Message[],
+    signal?: AbortSignal
+  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+    if (signal?.aborted) return;
+    let accumulatedText = '';
+    for await (const chunk of this.generateContentStream(messages, settings)) {
+      if (signal?.aborted) return;
+      if (typeof chunk === 'string') {
+        accumulatedText += chunk;
+        yield { text: accumulatedText, images: [] };
       }
     }
   }

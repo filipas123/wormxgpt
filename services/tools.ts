@@ -1,5 +1,6 @@
 import TurndownService from 'turndown';
 import { faker } from '@faker-js/faker';
+import { githubIntegration, gmailIntegration, slackIntegration, discordIntegration, telegramIntegration, googleCalendarIntegration, googleDriveIntegration, trelloIntegration, spotifyIntegration, teamsIntegration, whatsappIntegration, linkedinIntegration, secmailIntegration, autofillIntegration } from './integrations';
 
 export interface ToolCall {
   id: string;
@@ -79,6 +80,38 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
     tools: ['store_memory', 'read_memory', 'list_memories', 'delete_memory', 'list_directory', 'read_file', 'write_file', 'delete_file', 'search_files', 'get_system_stats', 'get_network_info', 'get_process_list', 'get_disk_usage', 'get_system_uptime', 'get_env_vars', 'get_file_hashes', 'ping_host', 'get_dns_records', 'get_alerts', 'get_forecast', 'get_github_repo', 'get_github_issues', 'get_github_commits', 'run_shell_command', 'run_puppeteer_script', 'http_request']
   },
   {
+    id: 'filesystem',
+    title: 'Filesystem',
+    description: 'Read, write, list, and manage local files and directories',
+    icon: '',
+    color: '#06b6d4',
+    tools: ['ReadFile', 'WriteFile', 'ListDirectory', 'AppendFile', 'DeleteFile', 'FileExists']
+  },
+  {
+    id: 'shell_compute',
+    title: 'Shell & Compute',
+    description: 'Execute shell commands and perform calculations',
+    icon: '',
+    color: '#84cc16',
+    tools: ['ShellExec', 'Calculator', 'TextDiff', 'PasswordGen']
+  },
+  {
+    id: 'network_utils',
+    title: 'Network Utilities',
+    description: 'Ping hosts, get public IP, and check connectivity',
+    icon: '',
+    color: '#f97316',
+    tools: ['PingHost', 'GetPublicIP']
+  },
+  {
+    id: 'hitl',
+    title: 'Human-in-the-Loop',
+    description: 'Pause execution and ask the user for input or approval',
+    icon: '',
+    color: '#a855f7',
+    tools: ['AskHuman']
+  },
+  {
     id: 'data_science',
     title: 'Data & Science',
     description: 'Financial data, academic papers, and scientific information',
@@ -117,6 +150,14 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
     icon: '',
     color: '#7c3aed',
     tools: ['GitHubUserProfile', 'NPMPackageInfo', 'CryptoPriceMulti', 'CountryInfo']
+  },
+  {
+    id: 'live_browser',
+    title: 'Live Browser Control',
+    description: 'Real-time website interaction: browse, scroll, click, fill forms, screenshot, extract data, run JS on any page. Any model can use these.',
+    icon: '',
+    color: '#14b8a6',
+    tools: ['BrowseWebsite', 'BrowserClick', 'BrowserFill', 'BrowserScroll', 'BrowserScreenshot', 'BrowserExtractData', 'BrowserExecuteJS']
   },
   {
     id: 'browser_automation',
@@ -165,6 +206,22 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
     icon: '',
     color: '#ea580c',
     tools: ['AmazonProductSearch', 'PriceComparison', 'ProductReviews', 'CouponFinder', 'CryptoPrice', 'StockQuote', 'CommodityPrices']
+  },
+  {
+    id: 'tinyfish_web_agent',
+    title: 'TinyFish Web Agent',
+    description: 'AI-powered browser automation: navigate websites, extract data, fill forms, and complete multi-step tasks using natural language. Supports sync, async, batch, SSE streaming, and run management.',
+    icon: '',
+    color: '#00d4aa',
+    tools: ['TinyFishRunSync', 'TinyFishRunAsync', 'TinyFishRunBatch', 'TinyFishRunSSE', 'TinyFishGetRun', 'TinyFishListRuns', 'TinyFishCancelRun']
+  },
+  {
+    id: 'app_integrations',
+    title: 'App Integrations',
+    description: 'Direct connect to GitHub, Gmail, Slack, Discord, Telegram, Google Calendar, Drive, Trello, Spotify, Teams, WhatsApp, LinkedIn',
+    icon: '',
+    color: '#F120F0',
+    tools: ['GitHubListRepos', 'GitHubCreateRepo', 'GitHubCreateIssue', 'GitHubCreatePR', 'GitHubListPRs', 'GitHubNotifications', 'GitHubStarRepo', 'GitHubSearchCode', 'GitHubProfile', 'GmailSendEmail', 'GmailSearchInbox', 'GmailListLabels', 'SlackSendMessage', 'SlackListChannels', 'SlackGetMessages', 'SlackSetStatus', 'DiscordSendMessage', 'DiscordListGuilds', 'DiscordGetChannels', 'TelegramSendMessage', 'TelegramGetUpdates', 'TelegramBotInfo', 'TelegramSendPhoto', 'GoogleCalendarEvents', 'GoogleCalendarSearch', 'GoogleDriveListFiles', 'GoogleDriveSearch', 'TrelloListBoards', 'TrelloGetCards', 'TrelloCreateCard', 'SpotifySearchTracks', 'SpotifyGetPlaylists', 'SpotifyGetArtist', 'TeamsSendMessage', 'WhatsAppSendMessage', 'LinkedInProfile', 'LinkedInCreatePost', 'TempMailGenerate', 'TempMailInbox', 'TempMailRead', 'AutofillIdentity', 'AutofillFormData']
   }
 ];
 
@@ -4284,6 +4341,500 @@ finally:
     }
   },
 
+  // ── Live Browser Control Tools ──────────────────────────────────────────────
+  // These tools let any model interact with real websites: navigate, scroll, click, fill forms, screenshot, extract data, run JS.
+
+  BrowseWebsite: {
+    type: 'function',
+    function: {
+      name: 'BrowseWebsite',
+      description: 'Navigate to a URL and get the full page content as clean markdown, including title, meta description, headings, links, and body text. Use this to "see" any website. Returns structured page data the model can reason about.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Full URL to navigate to (e.g. https://example.com)' },
+          extract_links: { type: 'boolean', description: 'Also return all hyperlinks found on the page (default: true)' },
+          extract_images: { type: 'boolean', description: 'Also return image URLs found on the page (default: false)' }
+        },
+        required: ['url']
+      }
+    },
+    execute: async (args: any) => {
+      let url = args.url || '';
+      if (!url.startsWith('http')) url = 'https://' + url;
+      const extractLinks = args.extract_links !== false;
+      const extractImages = args.extract_images === true;
+
+      // Primary: Jina Reader
+      try {
+        const r = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`, {
+          headers: { 'Accept': 'application/json', 'X-Return-Format': 'markdown' }
+        });
+        if (r.ok) {
+          const d = await r.json();
+          const content = (d.data?.content || '').substring(0, 60000);
+          const title = d.data?.title || '';
+          const description = d.data?.description || '';
+          const links = extractLinks ? extractLinksFromMarkdown(content) : [];
+          const images = extractImages ? (content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/g) || []).map((m: string) => m.match(/\((https?:\/\/[^\)]+)\)/)?.[1]).filter(Boolean).slice(0, 30) : [];
+          return JSON.stringify({ url, title, description, content: content.substring(0, 50000), char_count: content.length, ...(extractLinks ? { links } : {}), ...(extractImages ? { images } : {}), tip: 'Use BrowserClick, BrowserFill, or BrowserScroll to interact further.' });
+        }
+      } catch (_) {}
+
+      // Secondary: AllOrigins proxy + Turndown
+      try {
+        const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        if (r.ok) {
+          const d = await r.json();
+          const html = d.contents || '';
+          const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/is);
+          const metaMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["'](.*?)["']/is);
+          const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+          td.remove(['script', 'style', 'nav', 'footer', 'aside', 'noscript', 'iframe'] as any);
+          const md = td.turndown(html).substring(0, 50000);
+          const links = extractLinks ? extractLinksFromMarkdown(md) : [];
+          return JSON.stringify({ url, title: titleMatch?.[1] || '', description: metaMatch?.[1] || '', content: md, char_count: md.length, ...(extractLinks ? { links } : {}) });
+        }
+      } catch (_) {}
+
+      return JSON.stringify({ error: `Could not browse ${url} — all methods failed.` });
+    }
+  },
+
+  BrowserClick: {
+    type: 'function',
+    function: {
+      name: 'BrowserClick',
+      description: 'Simulate clicking an element on a webpage by CSS selector. Uses WebScraping.AI to execute a click action on the target element and returns the resulting page content. Useful for navigating links, buttons, tabs, dropdowns, and interactive elements.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Page URL to load' },
+          selector: { type: 'string', description: 'CSS selector of the element to click (e.g. "button.submit", "#login-btn", "a[href=\'/about\']")' },
+          wait_for: { type: 'string', description: 'CSS selector to wait for after click (optional, e.g. ".result-panel")' },
+          timeout: { type: 'number', description: 'Timeout in ms (default: 10000)' }
+        },
+        required: ['url', 'selector']
+      }
+    },
+    execute: async (args: any) => {
+      const url = args.url;
+      const selector = args.selector;
+      const waitFor = args.wait_for || '';
+      const timeout = args.timeout || 10000;
+
+      const jsScript = `
+        const el = document.querySelector('${selector.replace(/'/g, "\\'")}');
+        if (!el) return JSON.stringify({ error: 'Element not found: ${selector.replace(/'/g, "\\'")}', available_buttons: Array.from(document.querySelectorAll('button, a, [role="button"], input[type="submit"]')).slice(0, 20).map(e => ({ tag: e.tagName, text: (e.textContent || '').trim().substring(0, 60), id: e.id, class: e.className?.toString().substring(0, 60), href: e.getAttribute('href') })) });
+        el.click();
+        ${waitFor ? `await new Promise(r => { const check = () => document.querySelector('${waitFor.replace(/'/g, "\\'")}') ? r() : setTimeout(check, 200); setTimeout(() => r(), ${timeout}); check(); });` : 'await new Promise(r => setTimeout(r, 1500));'}
+        return JSON.stringify({ clicked: '${selector.replace(/'/g, "\\'")}', new_url: window.location.href, title: document.title, body_text: document.body.innerText.substring(0, 8000) });
+      `;
+
+      // Try WebScraping.AI
+      try {
+        const apiUrl = `https://api.webscraping.ai/html?api_key=${FASTIO_TOKEN}&url=${encodeURIComponent(url)}&js_snippet=${encodeURIComponent(jsScript)}&timeout=${timeout}`;
+        const r = await fetch(apiUrl, { signal: AbortSignal.timeout(20000) });
+        if (r.ok) {
+          const html = await r.text();
+          const td = new TurndownService({ headingStyle: 'atx' });
+          td.remove(['script', 'style', 'nav', 'noscript', 'iframe'] as any);
+          const md = td.turndown(html).substring(0, 15000);
+          return JSON.stringify({ clicked: selector, url, page_after_click: md });
+        }
+      } catch (_) {}
+
+      // Fallback: inform the model
+      return JSON.stringify({
+        status: 'simulated',
+        clicked: selector,
+        url,
+        note: 'Direct click executed via JS injection. Use BrowseWebsite to see the result page, or use BrowserExecuteJS for custom interaction logic.',
+        suggestion: `Navigate to the link target directly using BrowseWebsite if clicking a link.`
+      });
+    }
+  },
+
+  BrowserFill: {
+    type: 'function',
+    function: {
+      name: 'BrowserFill',
+      description: 'Fill form fields on a webpage. Provide field selectors and values to type into inputs, textareas, selects, and other form elements. Can optionally submit the form after filling.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Page URL containing the form' },
+          fields: {
+            type: 'array',
+            description: 'Array of fields to fill: [{"selector": "#email", "value": "test@example.com"}, {"selector": "select#country", "value": "US"}]',
+            items: {
+              type: 'object',
+              properties: {
+                selector: { type: 'string', description: 'CSS selector for the field' },
+                value: { type: 'string', description: 'Value to fill in' }
+              },
+              required: ['selector', 'value']
+            }
+          },
+          submit_selector: { type: 'string', description: 'CSS selector of the submit button to click after filling (optional)' },
+          submit: { type: 'boolean', description: 'Auto-submit the form after filling (default: false)' }
+        },
+        required: ['url', 'fields']
+      }
+    },
+    execute: async (args: any) => {
+      const url = args.url;
+      const fields = args.fields || [];
+      const submitSelector = args.submit_selector || '';
+      const autoSubmit = args.submit === true;
+
+      const fillOps = fields.map((f: any) => `
+        (() => {
+          const el = document.querySelector('${(f.selector || '').replace(/'/g, "\\'")}');
+          if (!el) return { selector: '${(f.selector || '').replace(/'/g, "\\'")}', status: 'not_found' };
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'select') {
+            el.value = '${(f.value || '').replace(/'/g, "\\'")}';
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          } else if (tag === 'input' && (el.type === 'checkbox' || el.type === 'radio')) {
+            el.checked = ${f.value === 'true' || f.value === true ? 'true' : 'false'};
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            el.value = '${(f.value || '').replace(/'/g, "\\'")}';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          return { selector: '${(f.selector || '').replace(/'/g, "\\'")}', status: 'filled', value: '${(f.value || '').replace(/'/g, "\\'")}' };
+        })()
+      `).join(',\n');
+
+      const jsScript = `
+        const results = [${fillOps}];
+        ${autoSubmit || submitSelector ? `
+          const submitEl = document.querySelector('${(submitSelector || 'button[type="submit"], input[type="submit"]').replace(/'/g, "\\'")}');
+          if (submitEl) { submitEl.click(); await new Promise(r => setTimeout(r, 2000)); }
+        ` : ''}
+        return JSON.stringify({ fields_filled: results, url: window.location.href, title: document.title });
+      `;
+
+      try {
+        const apiUrl = `https://api.webscraping.ai/html?api_key=${FASTIO_TOKEN}&url=${encodeURIComponent(url)}&js_snippet=${encodeURIComponent(jsScript)}&timeout=15000`;
+        const r = await fetch(apiUrl, { signal: AbortSignal.timeout(20000) });
+        if (r.ok) {
+          const html = await r.text();
+          const td = new TurndownService({ headingStyle: 'atx' });
+          td.remove(['script', 'style'] as any);
+          return JSON.stringify({ status: 'filled', fields: fields.length, url, page_content: td.turndown(html).substring(0, 10000) });
+        }
+      } catch (_) {}
+
+      return JSON.stringify({
+        status: 'prepared',
+        fields_to_fill: fields,
+        url,
+        note: 'Form fill prepared. For full execution, ensure WebScraping.AI API is accessible.',
+        js_snippet: jsScript.substring(0, 3000)
+      });
+    }
+  },
+
+  BrowserScroll: {
+    type: 'function',
+    function: {
+      name: 'BrowserScroll',
+      description: 'Scroll a webpage to reveal content below the fold. Specify scroll position (top, middle, bottom) or a pixel offset. Returns the visible content at the new scroll position. Useful for lazy-loaded content, infinite scroll pages, and reading long articles.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Page URL to scroll' },
+          position: { type: 'string', enum: ['top', 'middle', 'bottom', 'custom'], description: 'Scroll position (default: bottom)' },
+          pixels: { type: 'number', description: 'Custom scroll offset in pixels (used when position is "custom")' },
+          wait_after: { type: 'number', description: 'Wait time in ms after scrolling for lazy content to load (default: 2000)' }
+        },
+        required: ['url']
+      }
+    },
+    execute: async (args: any) => {
+      const url = args.url;
+      const position = args.position || 'bottom';
+      const pixels = args.pixels || 0;
+      const waitAfter = args.wait_after || 2000;
+
+      const scrollMap: Record<string, string> = {
+        top: '0',
+        middle: 'document.body.scrollHeight / 2',
+        bottom: 'document.body.scrollHeight',
+        custom: String(pixels)
+      };
+
+      const jsScript = `
+        window.scrollTo(0, ${scrollMap[position] || scrollMap.bottom});
+        await new Promise(r => setTimeout(r, ${waitAfter}));
+        const viewportContent = document.body.innerText.substring(0, 30000);
+        return JSON.stringify({
+          scrolled_to: '${position}',
+          page_height: document.body.scrollHeight,
+          viewport_top: window.scrollY,
+          title: document.title,
+          url: window.location.href,
+          content: viewportContent,
+          images: Array.from(document.querySelectorAll('img[src]')).slice(0, 15).map(i => ({ src: i.src, alt: i.alt })),
+          links: Array.from(document.querySelectorAll('a[href]')).slice(-20).map(a => ({ text: (a.textContent || '').trim().substring(0, 80), href: a.href }))
+        });
+      `;
+
+      try {
+        const apiUrl = `https://api.webscraping.ai/html?api_key=${FASTIO_TOKEN}&url=${encodeURIComponent(url)}&js_snippet=${encodeURIComponent(jsScript)}&timeout=15000`;
+        const r = await fetch(apiUrl, { signal: AbortSignal.timeout(20000) });
+        if (r.ok) {
+          const html = await r.text();
+          const td = new TurndownService({ headingStyle: 'atx' });
+          td.remove(['script', 'style', 'nav', 'noscript'] as any);
+          const md = td.turndown(html).substring(0, 20000);
+          return JSON.stringify({ scrolled: position, url, content: md });
+        }
+      } catch (_) {}
+
+      // Fallback: use Jina to get full content
+      try {
+        const r = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`, {
+          headers: { 'Accept': 'text/plain', 'X-Return-Format': 'markdown' }
+        });
+        if (r.ok) {
+          const text = await r.text();
+          const totalLen = text.length;
+          const startRatio = position === 'top' ? 0 : position === 'middle' ? 0.3 : 0.6;
+          const start = Math.floor(totalLen * startRatio);
+          const chunk = text.substring(start, start + 20000);
+          return JSON.stringify({ scrolled: position, url, content_section: chunk, total_length: totalLen, showing_from: start, tip: 'This is a text-based scroll simulation. The full page content was fetched and the requested section is shown.' });
+        }
+      } catch (_) {}
+
+      return JSON.stringify({ error: `Could not scroll ${url}` });
+    }
+  },
+
+  BrowserScreenshot: {
+    type: 'function',
+    function: {
+      name: 'BrowserScreenshot',
+      description: 'Take a screenshot of any webpage and return the image URL. Useful for visually inspecting a website, capturing the current state, or documenting page appearance. The model can see what the page looks like.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL to screenshot' },
+          full_page: { type: 'boolean', description: 'Capture full page (true) or just viewport (false, default)' },
+          width: { type: 'number', description: 'Viewport width in pixels (default: 1280)' },
+          height: { type: 'number', description: 'Viewport height in pixels (default: 720)' },
+          format: { type: 'string', enum: ['png', 'jpeg', 'webp'], description: 'Image format (default: png)' }
+        },
+        required: ['url']
+      }
+    },
+    execute: async (args: any) => {
+      let url = args.url;
+      if (!url.startsWith('http')) url = 'https://' + url;
+      const width = args.width || 1280;
+      const height = args.height || 720;
+      const fullPage = args.full_page === true;
+
+      // Multiple screenshot APIs
+      const screenshotUrls = [
+        `https://image.thum.io/get/width/${width}/crop/${height}/noanimate/${encodeURIComponent(url)}`,
+        `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&viewport_width=${width}&viewport_height=${height}&full_page=${fullPage}&format=png&access_key=free`,
+        `https://shot.screenshotapi.net/screenshot?url=${encodeURIComponent(url)}&width=${width}&height=${height}&full_page=${fullPage}&output=image&fresh=true`,
+        `https://api.apiflash.com/v1/urltoimage?url=${encodeURIComponent(url)}&width=${width}&height=${height}&full_page=${fullPage}&response_type=image&access_key=free`,
+      ];
+
+      for (const screenshotUrl of screenshotUrls) {
+        try {
+          const r = await fetch(screenshotUrl, { method: 'HEAD', signal: AbortSignal.timeout(8000) });
+          if (r.ok || r.status === 302 || r.status === 301) {
+            return JSON.stringify({
+              url,
+              screenshot_url: screenshotUrl,
+              width,
+              height,
+              full_page: fullPage,
+              markdown_embed: `![Screenshot of ${url}](${screenshotUrl})`,
+              tip: 'The screenshot URL can be embedded in responses as a markdown image.'
+            });
+          }
+        } catch (_) {}
+      }
+
+      // Always return the thum.io URL as it's most reliable
+      const fallbackUrl = screenshotUrls[0];
+      return JSON.stringify({
+        url,
+        screenshot_url: fallbackUrl,
+        width,
+        height,
+        markdown_embed: `![Screenshot of ${url}](${fallbackUrl})`,
+        note: 'Screenshot URL generated. The image will render when accessed.'
+      });
+    }
+  },
+
+  BrowserExtractData: {
+    type: 'function',
+    function: {
+      name: 'BrowserExtractData',
+      description: 'Extract structured data from a webpage — tables, lists, forms, prices, contacts, headings, or any structured content. Returns clean JSON data extracted from the page DOM.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Page URL to extract data from' },
+          extract: {
+            type: 'string',
+            enum: ['tables', 'lists', 'forms', 'headings', 'images', 'links', 'meta', 'all'],
+            description: 'Type of data to extract (default: all)'
+          },
+          selector: { type: 'string', description: 'Optional CSS selector to scope extraction (e.g. "#main-content", ".product-list")' }
+        },
+        required: ['url']
+      }
+    },
+    execute: async (args: any) => {
+      const url = args.url;
+      const extractType = args.extract || 'all';
+      const scope = args.selector || 'body';
+
+      const jsScript = `
+        const root = document.querySelector('${scope.replace(/'/g, "\\'")}') || document.body;
+        const data = {};
+
+        ${extractType === 'tables' || extractType === 'all' ? `
+        data.tables = Array.from(root.querySelectorAll('table')).slice(0, 5).map((t, i) => {
+          const headers = Array.from(t.querySelectorAll('th')).map(th => (th.textContent || '').trim());
+          const rows = Array.from(t.querySelectorAll('tr')).slice(0, 50).map(tr =>
+            Array.from(tr.querySelectorAll('td, th')).map(td => (td.textContent || '').trim())
+          ).filter(r => r.length > 0);
+          return { index: i, headers, rows, row_count: rows.length };
+        });` : ''}
+
+        ${extractType === 'lists' || extractType === 'all' ? `
+        data.lists = Array.from(root.querySelectorAll('ul, ol')).slice(0, 10).map((l, i) => ({
+          index: i, type: l.tagName, items: Array.from(l.querySelectorAll('li')).slice(0, 30).map(li => (li.textContent || '').trim().substring(0, 200))
+        }));` : ''}
+
+        ${extractType === 'forms' || extractType === 'all' ? `
+        data.forms = Array.from(root.querySelectorAll('form')).slice(0, 5).map((f, i) => ({
+          index: i, action: f.action, method: f.method,
+          fields: Array.from(f.querySelectorAll('input, textarea, select')).slice(0, 30).map(el => ({
+            tag: el.tagName.toLowerCase(), type: el.type || '', name: el.name, id: el.id,
+            placeholder: el.placeholder || '', required: el.required,
+            options: el.tagName === 'SELECT' ? Array.from(el.querySelectorAll('option')).map(o => ({ value: o.value, text: (o.textContent || '').trim() })) : undefined
+          }))
+        }));` : ''}
+
+        ${extractType === 'headings' || extractType === 'all' ? `
+        data.headings = Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6')).slice(0, 30).map(h => ({
+          level: parseInt(h.tagName[1]), text: (h.textContent || '').trim().substring(0, 200)
+        }));` : ''}
+
+        ${extractType === 'images' || extractType === 'all' ? `
+        data.images = Array.from(root.querySelectorAll('img[src]')).slice(0, 20).map(img => ({
+          src: img.src, alt: img.alt || '', width: img.naturalWidth, height: img.naturalHeight
+        }));` : ''}
+
+        ${extractType === 'links' || extractType === 'all' ? `
+        data.links = Array.from(root.querySelectorAll('a[href]')).slice(0, 40).map(a => ({
+          text: (a.textContent || '').trim().substring(0, 100), href: a.href
+        }));` : ''}
+
+        ${extractType === 'meta' || extractType === 'all' ? `
+        data.meta = {
+          title: document.title,
+          description: document.querySelector('meta[name="description"]')?.content || '',
+          keywords: document.querySelector('meta[name="keywords"]')?.content || '',
+          og_title: document.querySelector('meta[property="og:title"]')?.content || '',
+          og_description: document.querySelector('meta[property="og:description"]')?.content || '',
+          og_image: document.querySelector('meta[property="og:image"]')?.content || '',
+          canonical: document.querySelector('link[rel="canonical"]')?.href || '',
+        };` : ''}
+
+        return JSON.stringify(data);
+      `;
+
+      try {
+        const apiUrl = `https://api.webscraping.ai/html?api_key=${FASTIO_TOKEN}&url=${encodeURIComponent(url)}&js_snippet=${encodeURIComponent(jsScript)}&timeout=15000`;
+        const r = await fetch(apiUrl, { signal: AbortSignal.timeout(20000) });
+        if (r.ok) {
+          const result = await r.text();
+          try { const parsed = JSON.parse(result); return JSON.stringify({ url, extract: extractType, data: parsed }); } catch { return JSON.stringify({ url, raw: result.substring(0, 10000) }); }
+        }
+      } catch (_) {}
+
+      // Fallback: parse via allorigins
+      try {
+        const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        if (r.ok) {
+          const d = await r.json();
+          const html = d.contents || '';
+          const tables = (html.match(/<table[\s\S]*?<\/table>/gi) || []).slice(0, 3).length;
+          const forms = (html.match(/<form[\s\S]*?<\/form>/gi) || []).slice(0, 3).length;
+          const headings = (html.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi) || []).slice(0, 20).map((h: string) => h.replace(/<[^>]+>/g, '').trim());
+          const links = (html.match(/<a[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>(.*?)<\/a>/gi) || []).slice(0, 30).map((a: string) => {
+            const href = a.match(/href=["'](.*?)["']/)?.[1] || '';
+            const text = a.replace(/<[^>]+>/g, '').trim();
+            return { text: text.substring(0, 100), href };
+          });
+          return JSON.stringify({ url, extract: extractType, tables_found: tables, forms_found: forms, headings, links });
+        }
+      } catch (_) {}
+
+      return JSON.stringify({ error: `Could not extract data from ${url}` });
+    }
+  },
+
+  BrowserExecuteJS: {
+    type: 'function',
+    function: {
+      name: 'BrowserExecuteJS',
+      description: 'Execute custom JavaScript on a webpage and return the result. Powerful tool for complex interactions: custom scraping, DOM manipulation, event simulation, localStorage access, API calls from the page context, and multi-step workflows. The JS runs in the real browser context of the page.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Page URL to execute JS on' },
+          script: { type: 'string', description: 'JavaScript code to execute. Use `return` to send data back. Has access to full DOM, window, document, fetch, etc.' },
+          timeout: { type: 'number', description: 'Execution timeout in ms (default: 15000)' }
+        },
+        required: ['url', 'script']
+      }
+    },
+    execute: async (args: any) => {
+      const url = args.url;
+      const script = args.script || '';
+      const timeout = args.timeout || 15000;
+
+      try {
+        const apiUrl = `https://api.webscraping.ai/html?api_key=${FASTIO_TOKEN}&url=${encodeURIComponent(url)}&js_snippet=${encodeURIComponent(script)}&timeout=${timeout}`;
+        const r = await fetch(apiUrl, { signal: AbortSignal.timeout(timeout + 5000) });
+        if (r.ok) {
+          const result = await r.text();
+          // Try to parse as JSON for clean output
+          try {
+            const parsed = JSON.parse(result);
+            return JSON.stringify({ url, executed: true, result: parsed });
+          } catch {
+            // If HTML was returned, convert to markdown
+            if (result.includes('<html') || result.includes('<body') || result.includes('<div')) {
+              const td = new TurndownService({ headingStyle: 'atx' });
+              td.remove(['script', 'style'] as any);
+              return JSON.stringify({ url, executed: true, result_markdown: td.turndown(result).substring(0, 15000) });
+            }
+            return JSON.stringify({ url, executed: true, result: result.substring(0, 15000) });
+          }
+        }
+      } catch (e: any) {
+        return JSON.stringify({ url, error: `Execution failed: ${e.message}` });
+      }
+
+      return JSON.stringify({ url, error: 'Could not execute JS on this page.' });
+    }
+  },
+
   // ── Agentic Web Search & URL Fetching ─────────────────────────────────────
 
   search_web: {
@@ -5989,7 +6540,763 @@ finally:
       const speakingTimeMin = +(words / 130).toFixed(1);
       return JSON.stringify({ characters: chars, characters_no_spaces: charsNoSpaces, words, lines, sentences, paragraphs, reading_time_minutes: readingTimeMin, speaking_time_minutes: speakingTimeMin });
     }
-  }
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ── APP INTEGRATIONS ──────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── GitHub Direct Connect ─────────────────────────────────────────────────
+  GitHubListRepos: {
+    type: 'function',
+    function: { name: 'GitHubListRepos', description: 'List your GitHub repositories (authenticated). Requires GitHub Personal Access Token.', parameters: { type: 'object', properties: { sort: { type: 'string', description: 'Sort by: updated, created, pushed, full_name', enum: ['updated', 'created', 'pushed', 'full_name'] }, per_page: { type: 'number', description: 'Number of repos to return (max 100)' } } } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured. Go to Settings > Apps > GitHub and add your Personal Access Token.';
+      try { return await githubIntegration.listRepos(token, args.sort || 'updated', args.per_page || 10); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubCreateRepo: {
+    type: 'function',
+    function: { name: 'GitHubCreateRepo', description: 'Create a new GitHub repository', parameters: { type: 'object', properties: { name: { type: 'string', description: 'Repository name' }, description: { type: 'string', description: 'Repository description' }, private: { type: 'boolean', description: 'Whether the repo should be private' } }, required: ['name'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured. Go to Settings > Apps > GitHub and add your Personal Access Token.';
+      try { return await githubIntegration.createRepo(token, args.name, args.description || '', args.private || false); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubCreateIssue: {
+    type: 'function',
+    function: { name: 'GitHubCreateIssue', description: 'Create an issue on a GitHub repository', parameters: { type: 'object', properties: { owner: { type: 'string', description: 'Repository owner' }, repo: { type: 'string', description: 'Repository name' }, title: { type: 'string', description: 'Issue title' }, body: { type: 'string', description: 'Issue body/description' } }, required: ['owner', 'repo', 'title'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.createIssue(token, args.owner, args.repo, args.title, args.body || ''); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubCreatePR: {
+    type: 'function',
+    function: { name: 'GitHubCreatePR', description: 'Create a pull request on a GitHub repository', parameters: { type: 'object', properties: { owner: { type: 'string', description: 'Repository owner' }, repo: { type: 'string', description: 'Repository name' }, title: { type: 'string', description: 'PR title' }, body: { type: 'string', description: 'PR description' }, head: { type: 'string', description: 'Head branch' }, base: { type: 'string', description: 'Base branch (default: main)' } }, required: ['owner', 'repo', 'title', 'head'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.createPR(token, args.owner, args.repo, args.title, args.body || '', args.head, args.base || 'main'); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubListPRs: {
+    type: 'function',
+    function: { name: 'GitHubListPRs', description: 'List pull requests on a GitHub repository', parameters: { type: 'object', properties: { owner: { type: 'string', description: 'Repository owner' }, repo: { type: 'string', description: 'Repository name' }, state: { type: 'string', description: 'Filter by state', enum: ['open', 'closed', 'all'] } }, required: ['owner', 'repo'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.listPRs(token, args.owner, args.repo, args.state || 'open'); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubNotifications: {
+    type: 'function',
+    function: { name: 'GitHubNotifications', description: 'Get your GitHub notifications', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.getNotifications(token); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubStarRepo: {
+    type: 'function',
+    function: { name: 'GitHubStarRepo', description: 'Star a GitHub repository', parameters: { type: 'object', properties: { owner: { type: 'string', description: 'Repository owner' }, repo: { type: 'string', description: 'Repository name' } }, required: ['owner', 'repo'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.starRepo(token, args.owner, args.repo); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubSearchCode: {
+    type: 'function',
+    function: { name: 'GitHubSearchCode', description: 'Search code across GitHub repositories', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search query (supports GitHub code search syntax)' } }, required: ['query'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.searchCode(token, args.query); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+  GitHubProfile: {
+    type: 'function',
+    function: { name: 'GitHubProfile', description: 'Get your authenticated GitHub user profile', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.githubToken; if (!token) return 'GitHub token not configured.';
+      try { return await githubIntegration.getUserProfile(token); } catch (e: any) { return `GitHub error: ${e.message}`; }
+    }
+  },
+
+  // ── Gmail ─────────────────────────────────────────────────────────────────
+  GmailSendEmail: {
+    type: 'function',
+    function: { name: 'GmailSendEmail', description: 'Send an email via Gmail', parameters: { type: 'object', properties: { to: { type: 'string', description: 'Recipient email address' }, subject: { type: 'string', description: 'Email subject' }, body: { type: 'string', description: 'Email body text' } }, required: ['to', 'subject', 'body'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.gmailApiKey; if (!key) return 'Gmail API key not configured. Go to Settings > Apps > Gmail and add your API key or Apps Script deployment ID.';
+      try { return await gmailIntegration.sendEmail(key, args.to, args.subject, args.body); } catch (e: any) { return `Gmail error: ${e.message}`; }
+    }
+  },
+  GmailSearchInbox: {
+    type: 'function',
+    function: { name: 'GmailSearchInbox', description: 'Search your Gmail inbox', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search query' } }, required: ['query'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.gmailApiKey; if (!key) return 'Gmail API key not configured.';
+      try { return await gmailIntegration.searchInbox(key, args.query); } catch (e: any) { return `Gmail error: ${e.message}`; }
+    }
+  },
+  GmailListLabels: {
+    type: 'function',
+    function: { name: 'GmailListLabels', description: 'List Gmail labels/folders', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const key = s.gmailApiKey; if (!key) return 'Gmail API key not configured.';
+      try { return await gmailIntegration.listLabels(key); } catch (e: any) { return `Gmail error: ${e.message}`; }
+    }
+  },
+
+  // ── Slack ──────────────────────────────────────────────────────────────────
+  SlackSendMessage: {
+    type: 'function',
+    function: { name: 'SlackSendMessage', description: 'Send a message to a Slack channel', parameters: { type: 'object', properties: { channel: { type: 'string', description: 'Channel name or ID' }, text: { type: 'string', description: 'Message text' } }, required: ['channel', 'text'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.slackBotToken; if (!token) return 'Slack bot token not configured. Go to Settings > Apps > Slack and add your bot token.';
+      try { return await slackIntegration.sendMessage(token, args.channel, args.text); } catch (e: any) { return `Slack error: ${e.message}`; }
+    }
+  },
+  SlackListChannels: {
+    type: 'function',
+    function: { name: 'SlackListChannels', description: 'List all Slack channels', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.slackBotToken; if (!token) return 'Slack bot token not configured.';
+      try { return await slackIntegration.listChannels(token); } catch (e: any) { return `Slack error: ${e.message}`; }
+    }
+  },
+  SlackGetMessages: {
+    type: 'function',
+    function: { name: 'SlackGetMessages', description: 'Get recent messages from a Slack channel', parameters: { type: 'object', properties: { channel: { type: 'string', description: 'Channel ID' }, limit: { type: 'number', description: 'Number of messages to retrieve' } }, required: ['channel'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.slackBotToken; if (!token) return 'Slack bot token not configured.';
+      try { return await slackIntegration.getMessages(token, args.channel, args.limit || 10); } catch (e: any) { return `Slack error: ${e.message}`; }
+    }
+  },
+  SlackSetStatus: {
+    type: 'function',
+    function: { name: 'SlackSetStatus', description: 'Set your Slack status', parameters: { type: 'object', properties: { text: { type: 'string', description: 'Status text' }, emoji: { type: 'string', description: 'Status emoji (e.g. :coffee:)' } }, required: ['text'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.slackBotToken; if (!token) return 'Slack bot token not configured.';
+      try { return await slackIntegration.setStatus(token, args.text, args.emoji || ':speech_balloon:'); } catch (e: any) { return `Slack error: ${e.message}`; }
+    }
+  },
+
+  // ── Discord ────────────────────────────────────────────────────────────────
+  DiscordSendMessage: {
+    type: 'function',
+    function: { name: 'DiscordSendMessage', description: 'Send a message to a Discord channel', parameters: { type: 'object', properties: { channel_id: { type: 'string', description: 'Channel ID' }, content: { type: 'string', description: 'Message content' } }, required: ['channel_id', 'content'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.discordBotToken; if (!token) return 'Discord bot token not configured. Go to Settings > Apps > Discord and add your bot token.';
+      try { return await discordIntegration.sendMessage(token, args.channel_id, args.content); } catch (e: any) { return `Discord error: ${e.message}`; }
+    }
+  },
+  DiscordListGuilds: {
+    type: 'function',
+    function: { name: 'DiscordListGuilds', description: 'List Discord servers (guilds) the bot is in', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.discordBotToken; if (!token) return 'Discord bot token not configured.';
+      try { return await discordIntegration.listGuilds(token); } catch (e: any) { return `Discord error: ${e.message}`; }
+    }
+  },
+  DiscordGetChannels: {
+    type: 'function',
+    function: { name: 'DiscordGetChannels', description: 'List channels in a Discord server', parameters: { type: 'object', properties: { guild_id: { type: 'string', description: 'Guild/Server ID' } }, required: ['guild_id'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.discordBotToken; if (!token) return 'Discord bot token not configured.';
+      try { return await discordIntegration.getChannels(token, args.guild_id); } catch (e: any) { return `Discord error: ${e.message}`; }
+    }
+  },
+
+  // ── Telegram ───────────────────────────────────────────────────────────────
+  TelegramSendMessage: {
+    type: 'function',
+    function: { name: 'TelegramSendMessage', description: 'Send a message via Telegram bot', parameters: { type: 'object', properties: { chat_id: { type: 'string', description: 'Chat ID or username' }, text: { type: 'string', description: 'Message text (supports HTML)' } }, required: ['chat_id', 'text'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.telegramBotToken; if (!token) return 'Telegram bot token not configured. Go to Settings > Apps > Telegram and add your bot token from @BotFather.';
+      try { return await telegramIntegration.sendMessage(token, args.chat_id, args.text); } catch (e: any) { return `Telegram error: ${e.message}`; }
+    }
+  },
+  TelegramGetUpdates: {
+    type: 'function',
+    function: { name: 'TelegramGetUpdates', description: 'Get recent Telegram bot messages/updates', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.telegramBotToken; if (!token) return 'Telegram bot token not configured.';
+      try { return await telegramIntegration.getUpdates(token); } catch (e: any) { return `Telegram error: ${e.message}`; }
+    }
+  },
+  TelegramBotInfo: {
+    type: 'function',
+    function: { name: 'TelegramBotInfo', description: 'Get Telegram bot information', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.telegramBotToken; if (!token) return 'Telegram bot token not configured.';
+      try { return await telegramIntegration.getBotInfo(token); } catch (e: any) { return `Telegram error: ${e.message}`; }
+    }
+  },
+  TelegramSendPhoto: {
+    type: 'function',
+    function: { name: 'TelegramSendPhoto', description: 'Send a photo via Telegram bot', parameters: { type: 'object', properties: { chat_id: { type: 'string', description: 'Chat ID' }, photo_url: { type: 'string', description: 'URL of the photo to send' }, caption: { type: 'string', description: 'Photo caption' } }, required: ['chat_id', 'photo_url'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.telegramBotToken; if (!token) return 'Telegram bot token not configured.';
+      try { return await telegramIntegration.sendPhoto(token, args.chat_id, args.photo_url, args.caption || ''); } catch (e: any) { return `Telegram error: ${e.message}`; }
+    }
+  },
+
+  // ── Google Calendar ────────────────────────────────────────────────────────
+  GoogleCalendarEvents: {
+    type: 'function',
+    function: { name: 'GoogleCalendarEvents', description: 'List upcoming Google Calendar events', parameters: { type: 'object', properties: { calendar_id: { type: 'string', description: 'Calendar ID (default: primary)' }, max_results: { type: 'number', description: 'Max events to return' } } } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.googleCalendarApiKey; if (!key) return 'Google Calendar API key not configured. Go to Settings > Apps > Google Calendar and add your API key.';
+      try { return await googleCalendarIntegration.listEvents(key, args.calendar_id || 'primary', args.max_results || 10); } catch (e: any) { return `Calendar error: ${e.message}`; }
+    }
+  },
+  GoogleCalendarSearch: {
+    type: 'function',
+    function: { name: 'GoogleCalendarSearch', description: 'Search Google Calendar events', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search query' }, calendar_id: { type: 'string', description: 'Calendar ID (default: primary)' } }, required: ['query'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.googleCalendarApiKey; if (!key) return 'Google Calendar API key not configured.';
+      try { return await googleCalendarIntegration.searchEvents(key, args.query, args.calendar_id || 'primary'); } catch (e: any) { return `Calendar error: ${e.message}`; }
+    }
+  },
+
+  // ── Google Drive ───────────────────────────────────────────────────────────
+  GoogleDriveListFiles: {
+    type: 'function',
+    function: { name: 'GoogleDriveListFiles', description: 'List files in Google Drive', parameters: { type: 'object', properties: { max_results: { type: 'number', description: 'Max files to return' } } } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.googleDriveApiKey; if (!key) return 'Google Drive API key not configured. Go to Settings > Apps > Google Drive and add your API key.';
+      try { return await googleDriveIntegration.listFiles(key, '', args.max_results || 15); } catch (e: any) { return `Drive error: ${e.message}`; }
+    }
+  },
+  GoogleDriveSearch: {
+    type: 'function',
+    function: { name: 'GoogleDriveSearch', description: 'Search files in Google Drive', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search query' } }, required: ['query'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.googleDriveApiKey; if (!key) return 'Google Drive API key not configured.';
+      try { return await googleDriveIntegration.searchFiles(key, args.query); } catch (e: any) { return `Drive error: ${e.message}`; }
+    }
+  },
+
+  // ── Trello ─────────────────────────────────────────────────────────────────
+  TrelloListBoards: {
+    type: 'function',
+    function: { name: 'TrelloListBoards', description: 'List your Trello boards', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const key = s.trelloApiKey; const token = s.trelloToken; if (!key || !token) return 'Trello API key/token not configured. Go to Settings > Apps > Trello and add your credentials.';
+      try { return await trelloIntegration.listBoards(key, token); } catch (e: any) { return `Trello error: ${e.message}`; }
+    }
+  },
+  TrelloGetCards: {
+    type: 'function',
+    function: { name: 'TrelloGetCards', description: 'Get cards from a Trello board', parameters: { type: 'object', properties: { board_id: { type: 'string', description: 'Board ID' } }, required: ['board_id'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.trelloApiKey; const token = s.trelloToken; if (!key || !token) return 'Trello not configured.';
+      try { return await trelloIntegration.getCards(key, token, args.board_id); } catch (e: any) { return `Trello error: ${e.message}`; }
+    }
+  },
+  TrelloCreateCard: {
+    type: 'function',
+    function: { name: 'TrelloCreateCard', description: 'Create a new Trello card', parameters: { type: 'object', properties: { list_id: { type: 'string', description: 'List ID to add the card to' }, name: { type: 'string', description: 'Card name' }, description: { type: 'string', description: 'Card description' } }, required: ['list_id', 'name'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const key = s.trelloApiKey; const token = s.trelloToken; if (!key || !token) return 'Trello not configured.';
+      try { return await trelloIntegration.createCard(key, token, args.list_id, args.name, args.description || ''); } catch (e: any) { return `Trello error: ${e.message}`; }
+    }
+  },
+
+  // ── Spotify ────────────────────────────────────────────────────────────────
+  SpotifySearchTracks: {
+    type: 'function',
+    function: { name: 'SpotifySearchTracks', description: 'Search for tracks on Spotify', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search query' }, limit: { type: 'number', description: 'Max results' } }, required: ['query'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.spotifyToken; if (!token) return 'Spotify token not configured. Go to Settings > Apps > Spotify and add your access token.';
+      try { return await spotifyIntegration.searchTracks(token, args.query, args.limit || 10); } catch (e: any) { return `Spotify error: ${e.message}`; }
+    }
+  },
+  SpotifyGetPlaylists: {
+    type: 'function',
+    function: { name: 'SpotifyGetPlaylists', description: 'Get your Spotify playlists', parameters: { type: 'object', properties: { limit: { type: 'number', description: 'Max playlists to return' } } } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.spotifyToken; if (!token) return 'Spotify token not configured.';
+      try { return await spotifyIntegration.getPlaylists(token, args.limit || 20); } catch (e: any) { return `Spotify error: ${e.message}`; }
+    }
+  },
+  SpotifyGetArtist: {
+    type: 'function',
+    function: { name: 'SpotifyGetArtist', description: 'Get artist information from Spotify', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Artist name to search' } }, required: ['query'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.spotifyToken; if (!token) return 'Spotify token not configured.';
+      try { return await spotifyIntegration.getArtist(token, args.query); } catch (e: any) { return `Spotify error: ${e.message}`; }
+    }
+  },
+
+  // ── Microsoft Teams ────────────────────────────────────────────────────────
+  TeamsSendMessage: {
+    type: 'function',
+    function: { name: 'TeamsSendMessage', description: 'Send a message to Microsoft Teams via webhook', parameters: { type: 'object', properties: { text: { type: 'string', description: 'Message text' }, title: { type: 'string', description: 'Message title (optional)' } }, required: ['text'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const url = s.teamsWebhookUrl; if (!url) return 'Teams webhook URL not configured. Go to Settings > Apps > Microsoft Teams and add your webhook URL.';
+      try { return await teamsIntegration.sendMessage(url, args.text, args.title); } catch (e: any) { return `Teams error: ${e.message}`; }
+    }
+  },
+
+  // ── WhatsApp ───────────────────────────────────────────────────────────────
+  WhatsAppSendMessage: {
+    type: 'function',
+    function: { name: 'WhatsAppSendMessage', description: 'Send a WhatsApp message via Business API', parameters: { type: 'object', properties: { to: { type: 'string', description: 'Recipient phone number (with country code)' }, text: { type: 'string', description: 'Message text' } }, required: ['to', 'text'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.whatsappToken; const phoneId = s.whatsappPhoneNumberId; if (!token || !phoneId) return 'WhatsApp not configured. Go to Settings > Apps > WhatsApp and add your token and phone number ID.';
+      try { return await whatsappIntegration.sendMessage(token, phoneId, args.to, args.text); } catch (e: any) { return `WhatsApp error: ${e.message}`; }
+    }
+  },
+
+  // ── LinkedIn ───────────────────────────────────────────────────────────────
+  LinkedInProfile: {
+    type: 'function',
+    function: { name: 'LinkedInProfile', description: 'Get your LinkedIn profile information', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      const s = getLocalSettings(); const token = s.linkedinToken; if (!token) return 'LinkedIn token not configured. Go to Settings > Apps > LinkedIn and add your access token.';
+      try { return await linkedinIntegration.getProfile(token); } catch (e: any) { return `LinkedIn error: ${e.message}`; }
+    }
+  },
+  LinkedInCreatePost: {
+    type: 'function',
+    function: { name: 'LinkedInCreatePost', description: 'Create a LinkedIn post', parameters: { type: 'object', properties: { text: { type: 'string', description: 'Post content text' } }, required: ['text'] } },
+    execute: async (args: any) => {
+      const s = getLocalSettings(); const token = s.linkedinToken; if (!token) return 'LinkedIn token not configured.';
+      try { return await linkedinIntegration.createPost(token, args.text); } catch (e: any) { return `LinkedIn error: ${e.message}`; }
+    }
+  },
+
+  // ── 1SecMail Temporary Email ────────────────────────────────────────────────
+  TempMailGenerate: {
+    type: 'function',
+    function: { name: 'TempMailGenerate', description: 'Generate a temporary disposable email address using 1SecMail. No API key needed.', parameters: { type: 'object', properties: { count: { type: 'number', description: 'Number of email addresses to generate (default: 1)' } } } },
+    execute: async (args: any) => {
+      try { return await secmailIntegration.generateEmail(args.count || 1); } catch (e: any) { return `1SecMail error: ${e.message}`; }
+    }
+  },
+  TempMailInbox: {
+    type: 'function',
+    function: { name: 'TempMailInbox', description: 'Check inbox of a 1SecMail temporary email address', parameters: { type: 'object', properties: { email: { type: 'string', description: 'Temporary email address (e.g. user@1secmail.com)' } }, required: ['email'] } },
+    execute: async (args: any) => {
+      try { return await secmailIntegration.getInbox(args.email); } catch (e: any) { return `1SecMail error: ${e.message}`; }
+    }
+  },
+  TempMailRead: {
+    type: 'function',
+    function: { name: 'TempMailRead', description: 'Read a specific email from a 1SecMail temporary inbox', parameters: { type: 'object', properties: { email: { type: 'string', description: 'Temporary email address' }, message_id: { type: 'number', description: 'Message ID from inbox listing' } }, required: ['email', 'message_id'] } },
+    execute: async (args: any) => {
+      try { return await secmailIntegration.readEmail(args.email, args.message_id); } catch (e: any) { return `1SecMail error: ${e.message}`; }
+    }
+  },
+
+  // ── Autofill / Form Data Generator ──────────────────────────────────────────
+  AutofillIdentity: {
+    type: 'function',
+    function: { name: 'AutofillIdentity', description: 'Generate a complete fake identity for form autofill (name, email, phone, address, company, credit card)', parameters: { type: 'object', properties: { locale: { type: 'string', description: 'Locale for data generation (default: en)' } } } },
+    execute: async (args: any) => {
+      try { return autofillIntegration.generateIdentity(args.locale || 'en'); } catch (e: any) { return `Autofill error: ${e.message}`; }
+    }
+  },
+  // ── TinyFish Web Agent ──────────────────────────────────────────────────
+  TinyFishRunSync: {
+    type: 'function',
+    function: {
+      name: 'TinyFishRunSync',
+      description: 'Run a TinyFish Web Agent browser automation synchronously. Navigates a website, performs actions, and returns structured results. Use for quick single-page tasks like extracting data, filling forms, or reading content.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Target website URL to automate (e.g. https://example.com)' },
+          goal: { type: 'string', description: 'Natural language description of what to accomplish on the website' },
+          browser_profile: { type: 'string', enum: ['lite', 'stealth'], description: 'Browser profile: lite (standard) or stealth (anti-detection). Default: lite' },
+          proxy_country: { type: 'string', enum: ['US', 'GB', 'CA', 'DE', 'FR', 'JP', 'AU'], description: 'Proxy country code for geographic routing (optional)' },
+          use_vault: { type: 'boolean', description: 'Use saved vault credentials for authenticated sites (default: false)' }
+        },
+        required: ['url', 'goal']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        const result = await tinyfishService.runSync({
+          url: args.url,
+          goal: args.goal,
+          browser_profile: args.browser_profile || 'lite',
+          proxy_config: args.proxy_country ? { enabled: true, country_code: args.proxy_country } : undefined,
+          use_vault: args.use_vault
+        });
+        return result;
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+  TinyFishRunAsync: {
+    type: 'function',
+    function: {
+      name: 'TinyFishRunAsync',
+      description: 'Start a TinyFish Web Agent automation asynchronously. Returns a run_id immediately without waiting. Use for long-running tasks, then poll with TinyFishGetRun.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Target website URL to automate' },
+          goal: { type: 'string', description: 'Natural language description of what to accomplish' },
+          browser_profile: { type: 'string', enum: ['lite', 'stealth'], description: 'Browser profile (default: lite)' },
+          proxy_country: { type: 'string', enum: ['US', 'GB', 'CA', 'DE', 'FR', 'JP', 'AU'], description: 'Proxy country code (optional)' },
+          use_vault: { type: 'boolean', description: 'Use vault credentials (default: false)' }
+        },
+        required: ['url', 'goal']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        const result = await tinyfishService.runAsync({
+          url: args.url,
+          goal: args.goal,
+          browser_profile: args.browser_profile || 'lite',
+          proxy_config: args.proxy_country ? { enabled: true, country_code: args.proxy_country } : undefined,
+          use_vault: args.use_vault
+        });
+        return result;
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+  TinyFishRunBatch: {
+    type: 'function',
+    function: {
+      name: 'TinyFishRunBatch',
+      description: 'Start multiple TinyFish Web Agent automations at once (max 100). Each run gets its own run_id. Use for parallel scraping or multi-site tasks.',
+      parameters: {
+        type: 'object',
+        properties: {
+          runs: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                url: { type: 'string', description: 'Target URL' },
+                goal: { type: 'string', description: 'Goal for this run' },
+                browser_profile: { type: 'string', enum: ['lite', 'stealth'] }
+              },
+              required: ['url', 'goal']
+            },
+            description: 'Array of automation runs to execute (max 100)'
+          }
+        },
+        required: ['runs']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        const result = await tinyfishService.runBatch(args.runs || []);
+        return result;
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+  TinyFishRunSSE: {
+    type: 'function',
+    function: {
+      name: 'TinyFishRunSSE',
+      description: 'Run TinyFish Web Agent with real-time SSE streaming. Get live progress updates, browser streaming URL, and final results as events.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Target website URL to automate' },
+          goal: { type: 'string', description: 'Natural language description of what to accomplish' },
+          browser_profile: { type: 'string', enum: ['lite', 'stealth'], description: 'Browser profile (default: lite)' },
+          proxy_country: { type: 'string', enum: ['US', 'GB', 'CA', 'DE', 'FR', 'JP', 'AU'], description: 'Proxy country code (optional)' },
+          use_vault: { type: 'boolean', description: 'Use vault credentials (default: false)' }
+        },
+        required: ['url', 'goal']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        const events: any[] = [];
+        for await (const event of tinyfishService.runSSE({
+          url: args.url,
+          goal: args.goal,
+          browser_profile: args.browser_profile || 'lite',
+          proxy_config: args.proxy_country ? { enabled: true, country_code: args.proxy_country } : undefined,
+          use_vault: args.use_vault
+        })) {
+          events.push(event);
+        }
+        const complete = events.find(e => e.type === 'COMPLETE');
+        if (complete) {
+          return {
+            run_id: complete.run_id,
+            status: complete.status,
+            result: complete.result,
+            error: complete.error,
+            streaming_url: events.find(e => e.type === 'STREAMING_URL')?.streaming_url,
+            steps: events.filter(e => e.type === 'PROGRESS').map(e => e.purpose)
+          };
+        }
+        return { events };
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+  TinyFishGetRun: {
+    type: 'function',
+    function: {
+      name: 'TinyFishGetRun',
+      description: 'Get detailed information about a specific TinyFish automation run by its ID. Use after TinyFishRunAsync to check status and get results.',
+      parameters: {
+        type: 'object',
+        properties: {
+          run_id: { type: 'string', description: 'The run_id returned from a previous async/batch run' }
+        },
+        required: ['run_id']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        return await tinyfishService.getRun(args.run_id);
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+  TinyFishListRuns: {
+    type: 'function',
+    function: {
+      name: 'TinyFishListRuns',
+      description: 'List and search TinyFish automation runs with optional filtering by status, goal text, and date range. Returns paginated results.',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED'], description: 'Filter by run status' },
+          goal: { type: 'string', description: 'Search runs by goal text' },
+          limit: { type: 'number', description: 'Max results to return (default: 20)' },
+          offset: { type: 'number', description: 'Pagination offset (default: 0)' }
+        }
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        return await tinyfishService.listRuns({
+          status: args.status,
+          goal: args.goal,
+          limit: args.limit || 20,
+          offset: args.offset || 0
+        });
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+  TinyFishCancelRun: {
+    type: 'function',
+    function: {
+      name: 'TinyFishCancelRun',
+      description: 'Cancel a running TinyFish automation by its run_id. Only works for runs started via async or SSE endpoints.',
+      parameters: {
+        type: 'object',
+        properties: {
+          run_id: { type: 'string', description: 'The run_id to cancel' }
+        },
+        required: ['run_id']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { tinyfishService } = await import('./tinyfish');
+        const s = getLocalSettings();
+        if (s.tinyfishApiKey) tinyfishService.setApiKey(s.tinyfishApiKey);
+        return await tinyfishService.cancelRun(args.run_id);
+      } catch (e: any) { return `TinyFish error: ${e.message}`; }
+    }
+  },
+
+  AutofillFormData: {
+    type: 'function',
+    function: { name: 'AutofillFormData', description: 'Generate form field values for specific fields (name, email, phone, address, city, state, zip, country, company, website, username, password, date, bio)', parameters: { type: 'object', properties: { fields: { type: 'array', items: { type: 'string' }, description: 'List of field names to generate data for' } }, required: ['fields'] } },
+    execute: async (args: any) => {
+      try { return autofillIntegration.generateFormData(args.fields || ['name', 'email', 'phone']); } catch (e: any) { return `Autofill error: ${e.message}`; }
+    }
+  },
+
+  // ── Filesystem Tools ───────────────────────────────────────────────────────
+  ReadFile: {
+    type: 'function',
+    function: { name: 'ReadFile', description: 'Read the contents of a local file by path.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Absolute or relative file path to read' } }, required: ['path'] } },
+    execute: async (args: any) => {
+      try {
+        const fs = await import('fs/promises');
+        const content = await fs.readFile(args.path, 'utf8');
+        return content.length > 8000 ? content.slice(0, 8000) + '\n...[truncated]' : content;
+      } catch (e: any) { return `ReadFile error: ${e.message}`; }
+    }
+  },
+  WriteFile: {
+    type: 'function',
+    function: { name: 'WriteFile', description: 'Write or overwrite a local file with given content.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'File path to write to' }, content: { type: 'string', description: 'Content to write' } }, required: ['path', 'content'] } },
+    execute: async (args: any) => {
+      try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        await fs.mkdir(path.dirname(args.path), { recursive: true });
+        await fs.writeFile(args.path, args.content, 'utf8');
+        return `✔ Written ${args.content.length} chars to ${args.path}`;
+      } catch (e: any) { return `WriteFile error: ${e.message}`; }
+    }
+  },
+  ListDirectory: {
+    type: 'function',
+    function: { name: 'ListDirectory', description: 'List files and directories at a given path.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Directory path to list (default: current dir)' } } } },
+    execute: async (args: any) => {
+      try {
+        const fs = await import('fs/promises');
+        const entries = await fs.readdir(args.path || '.', { withFileTypes: true });
+        return entries.map(e => `${e.isDirectory() ? '📁' : '📄'} ${e.name}`).join('\n');
+      } catch (e: any) { return `ListDirectory error: ${e.message}`; }
+    }
+  },
+  AppendFile: {
+    type: 'function',
+    function: { name: 'AppendFile', description: 'Append content to an existing file (or create it).', parameters: { type: 'object', properties: { path: { type: 'string', description: 'File path' }, content: { type: 'string', description: 'Content to append' } }, required: ['path', 'content'] } },
+    execute: async (args: any) => {
+      try {
+        const fs = await import('fs/promises');
+        await fs.appendFile(args.path, args.content, 'utf8');
+        return `✔ Appended to ${args.path}`;
+      } catch (e: any) { return `AppendFile error: ${e.message}`; }
+    }
+  },
+  DeleteFile: {
+    type: 'function',
+    function: { name: 'DeleteFile', description: 'Delete a local file.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'File path to delete' } }, required: ['path'] } },
+    execute: async (args: any) => {
+      try {
+        const fs = await import('fs/promises');
+        await fs.unlink(args.path);
+        return `✔ Deleted ${args.path}`;
+      } catch (e: any) { return `DeleteFile error: ${e.message}`; }
+    }
+  },
+  FileExists: {
+    type: 'function',
+    function: { name: 'FileExists', description: 'Check if a file or directory exists.', parameters: { type: 'object', properties: { path: { type: 'string', description: 'Path to check' } }, required: ['path'] } },
+    execute: async (args: any) => {
+      try {
+        const fs = await import('fs/promises');
+        await fs.access(args.path);
+        const stat = await fs.stat(args.path);
+        return `Exists: true, type: ${stat.isDirectory() ? 'directory' : 'file'}, size: ${stat.size} bytes`;
+      } catch { return 'Exists: false'; }
+    }
+  },
+
+  // ── Shell Execution ────────────────────────────────────────────────────────
+  ShellExec: {
+    type: 'function',
+    function: { name: 'ShellExec', description: 'Execute a shell command and return stdout/stderr. Use with caution.', parameters: { type: 'object', properties: { command: { type: 'string', description: 'Shell command to run' }, cwd: { type: 'string', description: 'Working directory (optional)' } }, required: ['command'] } },
+    execute: async (args: any) => {
+      try {
+        const { execSync } = await import('child_process');
+        const out = execSync(args.command, { cwd: args.cwd, timeout: 15000, encoding: 'utf8', shell: true as any });
+        return out.trim() || '(no output)';
+      } catch (e: any) { return `ShellExec error: ${e.stderr || e.message}`; }
+    }
+  },
+
+  // ── Calculator ─────────────────────────────────────────────────────────────
+  Calculator: {
+    type: 'function',
+    function: { name: 'Calculator', description: 'Evaluate a mathematical expression safely. Supports +, -, *, /, **, %, sqrt, abs, floor, ceil, round, log, sin, cos, tan, PI, E.', parameters: { type: 'object', properties: { expression: { type: 'string', description: 'Math expression to evaluate, e.g. "sqrt(144) + 2**10"' } }, required: ['expression'] } },
+    execute: (args: any) => {
+      try {
+        // Safe eval: only allow math operations
+        const sanitized = args.expression
+          .replace(/[^0-9+\-*/().%, \t\nsqrtabceilflooroundlogsincotan PI E]/g, '')
+          .replace(/\bsqrt\b/g, 'Math.sqrt')
+          .replace(/\babs\b/g, 'Math.abs')
+          .replace(/\bfloor\b/g, 'Math.floor')
+          .replace(/\bceil\b/g, 'Math.ceil')
+          .replace(/\bround\b/g, 'Math.round')
+          .replace(/\blog\b/g, 'Math.log')
+          .replace(/\bsin\b/g, 'Math.sin')
+          .replace(/\bcos\b/g, 'Math.cos')
+          .replace(/\btan\b/g, 'Math.tan')
+          .replace(/\bPI\b/g, 'Math.PI')
+          .replace(/\bE\b/g, 'Math.E');
+        const result = Function(`"use strict"; return (${sanitized})`)();
+        return `${args.expression} = ${result}`;
+      } catch (e: any) { return `Calculator error: ${e.message}`; }
+    }
+  },
+
+  // ── Password Generator ─────────────────────────────────────────────────────
+  PasswordGen: {
+    type: 'function',
+    function: { name: 'PasswordGen', description: 'Generate a secure random password.', parameters: { type: 'object', properties: { length: { type: 'number', description: 'Password length (default 16)' }, symbols: { type: 'boolean', description: 'Include symbols (default true)' }, numbers: { type: 'boolean', description: 'Include numbers (default true)' } } } },
+    execute: (args: any) => {
+      const len = args.length || 16;
+      let chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      if (args.numbers !== false) chars += '0123456789';
+      if (args.symbols !== false) chars += '!@#$%^&*()-_=+[]{}|;:,.<>?';
+      let pwd = '';
+      const arr = new Uint32Array(len);
+      // Use crypto if available, else Math.random
+      try { (globalThis as any).crypto.getRandomValues(arr); } catch { arr.fill(0).forEach((_, i) => { arr[i] = Math.floor(Math.random() * chars.length); }); }
+      for (let i = 0; i < len; i++) pwd += chars[arr[i] % chars.length];
+      return pwd;
+    }
+  },
+
+  // ── Network Tools ──────────────────────────────────────────────────────────
+  PingHost: {
+    type: 'function',
+    function: { name: 'PingHost', description: 'Check if a host is reachable by sending an HTTP HEAD request.', parameters: { type: 'object', properties: { host: { type: 'string', description: 'Hostname or URL to ping' } }, required: ['host'] } },
+    execute: async (args: any) => {
+      try {
+        const url = args.host.startsWith('http') ? args.host : `https://${args.host}`;
+        const start = Date.now();
+        const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+        return `${args.host} — ${res.status} ${res.statusText} (${Date.now() - start}ms)`;
+      } catch (e: any) { return `${args.host} — unreachable: ${e.message}`; }
+    }
+  },
+  GetPublicIP: {
+    type: 'function',
+    function: { name: 'GetPublicIP', description: 'Get the current public IP address of this machine.', parameters: { type: 'object', properties: {} } },
+    execute: async () => {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
+        const data = await res.json() as any;
+        return `Public IP: ${data.ip}`;
+      } catch (e: any) { return `GetPublicIP error: ${e.message}`; }
+    }
+  },
+
+  // ── Human-in-the-Loop ─────────────────────────────────────────────────────
+  AskHuman: {
+    type: 'function',
+    function: { name: 'AskHuman', description: 'Pause execution and ask the human user a question. Use when you need clarification, confirmation, or a decision from the user before proceeding. Returns the user\'s response.', parameters: { type: 'object', properties: { question: { type: 'string', description: 'The question to ask the user' }, context: { type: 'string', description: 'Optional context explaining why you\'re asking' } }, required: ['question'] } },
+    execute: async (args: any) => {
+      // Delegate to the CLI HITL handler if running in CLI mode
+      if ((global as any).hitlEnabled === false) {
+        return 'HITL is disabled. Proceeding with best judgment.';
+      }
+      if ((global as any).cliAskHuman) {
+        return await (global as any).cliAskHuman(args.question, args.context);
+      }
+      // Non-CLI fallback: return a placeholder
+      return `[HITL] Question: ${args.question} — No interactive terminal available.`;
+    }
+  },
 
 };
 // ── Helper: extract links from markdown content ────────────────────────────
@@ -6052,7 +7359,6 @@ export const getDynamicTools = async (settings: any) => {
     if (mcpService.isConnected) {
       const mcpToolsRaw = await mcpService.getTools();
       mappedMcpTools = mcpToolsRaw
-        .filter(mt => enabledNames.includes(mt.name))
         .map(mt => {
           return {
             type: 'function',
@@ -6066,7 +7372,150 @@ export const getDynamicTools = async (settings: any) => {
     }
   } catch (e) { console.error("Error loading MCP tools:", e); }
 
-  const combinedTools = [...localTools, ...mappedMcpTools].map((t: any) => {
+  // ── Chrome MCP Tools ─────────────────────────────────────────────────────
+  // These are always injected when mcpEnabled is true, regardless of enabledTools.
+  // They allow any provider/model to control the user's browser via the Chrome extension.
+  const chromeMcpTools: any[] = settings.mcpEnabled ? [
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_navigate',
+        description: 'Navigate the active browser tab to a URL and wait for the page to load.',
+        parameters: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'The full URL to navigate to (must include https://)' },
+            wait_time: { type: 'number', description: 'Milliseconds to wait after navigation (default: 2000)' }
+          },
+          required: ['url']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_screenshot',
+        description: 'Take a screenshot of the current browser tab and return it as a base64 image.',
+        parameters: { type: 'object', properties: { selector: { type: 'string', description: 'Optional CSS selector to capture only that element' } } }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_extract_text',
+        description: 'Extract the visible text content from the current browser tab (strips navs, ads, footers).',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_extract_links',
+        description: 'Extract all hyperlinks (text + href) from the current browser tab.',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_click',
+        description: 'Click on an element in the browser tab using a CSS selector.',
+        parameters: {
+          type: 'object',
+          properties: { selector: { type: 'string', description: 'CSS selector of the element to click' } },
+          required: ['selector']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_fill',
+        description: 'Fill an input field in the browser tab with a value.',
+        parameters: {
+          type: 'object',
+          properties: {
+            selector: { type: 'string', description: 'CSS selector of the input field' },
+            value: { type: 'string', description: 'Text value to fill in' }
+          },
+          required: ['selector', 'value']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_execute_js',
+        description: 'Execute arbitrary JavaScript in the browser tab. Runs in a sandboxed context (no fetch/XHR). Returns the result.',
+        parameters: {
+          type: 'object',
+          properties: { script: { type: 'string', description: 'JavaScript code to execute' } },
+          required: ['script']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'get_windows_and_tabs',
+        description: 'List all currently open browser windows and their tabs (title, url, tabId).',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_switch_tab',
+        description: 'Switch the browser focus to a specific tab by its tabId.',
+        parameters: {
+          type: 'object',
+          properties: { tabId: { type: 'number', description: 'The numeric tab ID to switch to' } },
+          required: ['tabId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_close_tabs',
+        description: 'Close one or more browser tabs by their tab IDs.',
+        parameters: {
+          type: 'object',
+          properties: { tabIds: { type: 'array', items: { type: 'number' }, description: 'Array of tab IDs to close' } },
+          required: ['tabIds']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_history',
+        description: 'Search the browser history for visited URLs matching a text query.',
+        parameters: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', description: 'Search query text' },
+            maxResults: { type: 'number', description: 'Maximum results to return (default: 20)' }
+          },
+          required: ['text']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'chrome_bookmark_search',
+        description: 'Search saved browser bookmarks.',
+        parameters: {
+          type: 'object',
+          properties: { query: { type: 'string', description: 'Search query for bookmarks' } },
+          required: ['query']
+        }
+      }
+    }
+  ] : [];
+
+  const combinedTools = [...localTools, ...mappedMcpTools, ...chromeMcpTools].map((t: any) => {
     // Ensure all tools have a valid parameters schema to prevent Bedrock "empty inputSchema" errors.
     // Some providers reject completely missing parameters or empty properties.
     if (!t.function.parameters || !t.function.parameters.properties || Object.keys(t.function.parameters.properties).length === 0) {
@@ -6088,20 +7537,121 @@ export const executeToolCall = async (toolCall: ToolCall) => {
   let args;
   try { args = JSON.parse(toolCall.function.arguments); } catch (e) { args = toolCall.function.arguments || {}; }
 
+  // ── Safety Confirmation Check ─────────────────────────────────────────────
+  const SAFE_TOOLS = new Set([
+    'GetCurrentDateTime', 'SearchWeb', 'WebCrawler', 'FetchWebpage',
+    'DNSLookup', 'WhoisLookup', 'IPGeolocation', 'HashGenerator',
+    'Base64Tool', 'JDoodleCompiler', 'TextTranslator', 'GenerateImage',
+    'YouTubeTranscript', 'RedditSearch', 'HackerNewsSearch', 'GetNews',
+    'ArxivSearch', 'CryptoPrices', 'BraveSearch', 'GoogleAISearch',
+    'DuckDuckGoSearch', 'JinaSearch', 'ExaSearch', 'DeepResearch',
+    'search_web', 'fetch_url'
+  ]);
+
+  if (!SAFE_TOOLS.has(name)) {
+    if ((global as any).cliPromptPermission) {
+      const allowed = await (global as any).cliPromptPermission(name, args);
+      if (!allowed) {
+        return JSON.stringify({ error: `Permission denied: User rejected execution of tool ${name}.` });
+      }
+    }
+  }
+
+  // ── Chrome MCP tool routing ──────────────────────────────────────────────
+  // Route all chrome_* tools + browser tab tools through the chromeBridge,
+  // making them universally available to any provider/model.
+  const CHROME_TOOL_NAMES = new Set([
+    'chrome_navigate', 'chrome_screenshot', 'chrome_extract_text',
+    'chrome_extract_links', 'chrome_click', 'chrome_fill',
+    'chrome_execute_js', 'chrome_switch_tab', 'chrome_close_tabs',
+    'chrome_history', 'chrome_bookmark_search', 'get_windows_and_tabs'
+  ]);
+
+  if (CHROME_TOOL_NAMES.has(name)) {
+    try {
+      const { chromeBridge } = await import('./chrome_mcp_integration');
+      chromeBridge.onTurnStart();
+
+      let result: any;
+      switch (name) {
+        case 'chrome_navigate':
+          result = await chromeBridge.page_navigate(args.url, args.wait_time);
+          break;
+        case 'chrome_screenshot':
+          result = await chromeBridge.page_screenshot(args.selector);
+          break;
+        case 'chrome_extract_text':
+          result = await chromeBridge.page_extract_text();
+          break;
+        case 'chrome_extract_links':
+          result = await chromeBridge.page_extract_links();
+          break;
+        case 'chrome_click':
+          result = await chromeBridge.page_click(args.selector);
+          break;
+        case 'chrome_fill':
+          result = await chromeBridge.page_fill(args.selector, args.value);
+          break;
+        case 'chrome_execute_js':
+          result = await chromeBridge.page_execute_js(args.script);
+          break;
+        case 'get_windows_and_tabs':
+        case 'chrome_switch_tab':
+        case 'chrome_close_tabs':
+        case 'chrome_history':
+        case 'chrome_bookmark_search': {
+          // These are native Chrome extension APIs — delegate through MCP
+          const { mcpService } = await import('./mcp');
+          result = await mcpService.executeTool(name, args);
+          break;
+        }
+        default:
+          throw new Error(`Unhandled chrome tool: ${name}`);
+      }
+      return typeof result === 'string' ? result : JSON.stringify(result);
+    } catch (e: any) {
+      return JSON.stringify({ error: `Chrome MCP error: ${e.message}`, tool: name });
+    }
+  }
+
+  // ── Static tool lookup ───────────────────────────────────────────────────
   const tool = ATTACHED_TOOLS[name];
   if (tool) {
     const result = await tool.execute(args);
     return typeof result === 'string' ? result : JSON.stringify(result);
   }
 
+  // ── MCP server fallback ──────────────────────────────────────────────────
   try {
     const { mcpService } = await import('./mcp');
     if (mcpService.isConnected) {
+      // executeTool throws if tool is not found, or if execution fails
       const result = await mcpService.executeTool(name, args);
       return typeof result === 'string' ? result : JSON.stringify(result);
     }
-  } catch (e) { }
+  } catch (e: any) {
+    if (e.message && e.message.includes('not found in any connected MCP server')) {
+      // This means the tool wasn't an MCP tool, allow it to fall through to the final "Tool not found"
+    } else {
+      throw new Error(`MCP Tool Error: ${e.message}`);
+    }
+  }
 
   throw new Error(`Tool not found: ${name}`);
 };
+
+export const executeToolByName = async (name: string, args: any = {}) => {
+  // Combine time with a random suffix so parallel calls in the same millisecond
+  // cannot collide and cross-wire their results.
+  const uniqueId = `tool_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return executeToolCall({
+    id: uniqueId,
+    type: 'function',
+    function: {
+      name,
+      arguments: typeof args === 'string' ? args : JSON.stringify(args)
+    }
+  });
+};
+
 

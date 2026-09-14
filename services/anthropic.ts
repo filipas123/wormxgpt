@@ -1,6 +1,7 @@
 import { Message, AppSettings } from '../types';
 import { pruneHistory } from '../utils/tokenManager';
 import { ATTACHED_TOOLS, validateAndFixToolArgs } from './tools';
+import { getEffectiveSystemInstruction } from '../utils/promptUtils';
 
 class AnthropicService {
   private apiKey: string | null = null;
@@ -84,9 +85,9 @@ class AnthropicService {
 
     const requestBody = {
       model: settings.model,
-      system: settings.systemInstruction,
+      system: getEffectiveSystemInstruction(settings, messages),
       messages: anthropicMessages,
-      ...(settings.maxTokens ? { max_tokens: settings.maxTokens } : {}),
+      max_tokens: settings.maxTokens || 4096,
       temperature: settings.temperature,
       top_p: settings.topP ?? 1.0,
       stream: true,
@@ -173,6 +174,22 @@ class AnthropicService {
     }
   }
 
+  async *streamChat(
+    settings: AppSettings,
+    messages: Message[],
+    signal?: AbortSignal
+  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+    if (signal?.aborted) return;
+    let accumulatedText = '';
+    for await (const chunk of this.generateContentStream(messages, settings)) {
+      if (signal?.aborted) return;
+      if (typeof chunk === 'string') {
+        accumulatedText += chunk;
+        yield { text: accumulatedText, images: [] };
+      }
+    }
+  }
+
   async verifyApiKey(key: string): Promise<boolean> {
     if (!key) return false;
     try {
@@ -185,12 +202,13 @@ class AnthropicService {
           'dangerously-allow-browser': 'true'
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: 'claude-3-5-haiku-latest',
           max_tokens: 1,
           messages: [{ role: 'user', content: 'hi' }]
         })
       });
-      return response.status !== 401;
+      // 401 = invalid key, 403 = forbidden; any other status means key is valid
+      return response.status !== 401 && response.status !== 403;
     } catch (error) {
       console.error("Anthropic Verification Failed");
       return false;

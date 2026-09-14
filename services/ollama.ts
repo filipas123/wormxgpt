@@ -1,4 +1,5 @@
 import { AppSettings, Message, ToolInvocation } from '../types';
+import { getEffectiveSystemInstruction } from '../utils/promptUtils';
 
 export const ollamaService = {
   apiKey: '',
@@ -14,11 +15,16 @@ export const ollamaService = {
 
   async verifyApiKey(key: string): Promise<boolean> {
     try {
-      const response = await fetch('http://localhost:11434/api/tags', {
+      const baseUrl = this.host || 'http://localhost:11434';
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (key) {
+        headers['Authorization'] = `Bearer ${key}`;
+      }
+      const response = await fetch(`${baseUrl}/api/tags`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        headers
       });
       return response.ok;
     } catch {
@@ -85,18 +91,22 @@ export const ollamaService = {
     const dynamicTools = await getDynamicTools(settings);
 
     // Prune history to avoid context overflow (Ollama works best with ~32k context for agents)
+    const effectiveSystem = getEffectiveSystemInstruction(settings, messages);
     const prunedMessages = pruneHistory(
       messages, 
-      settings.systemInstruction, 
+      effectiveSystem, 
       settings.maxTokens || 32000, 
       4000
     );
 
-    const formattedMessages = prunedMessages.map(m => ({
-      role: m.role === 'model' ? 'assistant' : 'user',
-      content: m.content,
-      images: m.images?.map(img => img.split(',')[1] || img)
-    }));
+    const formattedMessages = [
+      { role: 'system', content: effectiveSystem },
+      ...prunedMessages.map(m => ({
+        role: m.role === 'model' ? 'assistant' : 'user',
+        content: m.content,
+        images: m.images?.map(img => img.split(',')[1] || img)
+      }))
+    ];
 
     const headers = this._getHeaders(settings, apiKey);
 
