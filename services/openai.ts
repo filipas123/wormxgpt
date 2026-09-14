@@ -167,8 +167,128 @@ class OpenAIService {
     messages: Message[],
     signal?: AbortSignal
   ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+    // Real token streaming over SSE for plain text requests.
+    // Vision inputs, media commands and tool-turn continuations use the blocking path.
+    const lastMsg = messages[messages.length - 1];
+    const prompt = (lastMsg?.content || '').trim().toLowerCase();
+    const isMediaCommand = prompt.startsWith('/image ') || prompt.startsWith('/video ') || prompt.startsWith('/audio ');
+    const hasComplexTurns = messages.some(m => (m.images && m.images.length > 0) || m.toolInvocations);
+    if (!isMediaCommand && !hasComplexTurns) {
+      const streamed = yield* this.streamTextSSE(settings, messages, signal);
+      if (streamed) return;
+    }
     const result = await this.generateChat(settings, messages, signal);
     yield result;
+  }
+
+  /**
+   * True token streaming over SSE from api.openai.com.
+   * Yields cumulative text; returns true if the stream produced content,
+   * false if it failed (caller falls back to the blocking path).
+   */
+  private async *streamTextSSE(
+    settings: AppSettings,
+    messages: Message[],
+    signal?: AbortSignal
+  ): AsyncGenerator<{ text: string; images: string[]; sources?: { title: string; url: string }[] }, boolean, void> {
+    const key = settings.openaiApiKey || this.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') : '') || '';
+    if (!key) return false;
+
+    const systemInstruction = getEffectiveSystemInstruction(settings, messages);
+    const formattedMessages: any[] = [];
+    if (systemInstruction && systemInstruction.trim()) {
+      formattedMessages.push({ role: 'system', content: systemInstruction });
+    }
+    for (const m of messages) {
+      formattedMessages.push({
+        role: m.role === 'model' ? 'assistant' : 'user',
+        content: m.content
+      });
+    }
+
+    let resp: Response;
+    try {
+      resp = await fetch(this.baseUrl, {
+        signal,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: settings.model || 'gpt-4o',
+          messages: formattedMessages,
+          temperature: settings.temperature ?? 0.7,
+          top_p: settings.topP ?? 1.0,
+          ...(settings.maxTokens ? { max_tokens: settings.maxTokens } : {}),
+          presence_penalty: settings.presencePenalty ?? 0.0,
+          frequency_penalty: settings.frequencyPenalty ?? 0.0,
+          stream: true
+        })
+      });
+    } catch {
+      return false;
+    }
+
+    if (!resp.ok || !resp.body) return false;
+
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('event-stream')) {
+      // Endpoint ignored stream:true and returned a single JSON body —
+      // surface it as a successful blocking response instead of failing.
+      try {
+        const data = await resp.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        if (text) {
+          yield { text, images: [], sources: [] };
+          return true;
+        }
+      } catch { /* fall through */ }
+      return false;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let cumulative = '';
+
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          try { await reader.cancel(); } catch {}
+          throw new DOMException('Generation cancelled by user.', 'AbortError');
+        }
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              const json = JSON.parse(payload);
+              const delta = json.choices?.[0]?.delta?.content ?? '';
+              if (delta) {
+                cumulative += delta;
+                yield { text: cumulative, images: [], sources: [] };
+              }
+            } catch {
+              // Malformed JSON chunk — skip
+            }
+          }
+        }
+      }
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+
+    return cumulative.length > 0;
   }
 
   async verifyApiKey(key: string): Promise<boolean> {

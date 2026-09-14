@@ -323,8 +323,98 @@ export class GeminiService {
     messages: Message[],
     signal?: AbortSignal
   ): AsyncGenerator<StreamResponse> {
-    const result = await this.generateChat(settings, messages, signal);
-    yield result;
+    // Real token streaming via the SDK for plain text requests.
+    // Media commands and vision inputs ride the blocking pipeline.
+    const lastMsg = messages[messages.length - 1];
+    const prompt = (lastMsg?.content || '').trim().toLowerCase();
+    const isMediaCommand = prompt.startsWith('/image ') || prompt.startsWith('/video ') || prompt.startsWith('/audio ');
+    const hasImages = messages.some(m => m.images && m.images.length > 0);
+    if (isMediaCommand || hasImages) {
+      yield await this.generateChat(settings, messages, signal);
+      return;
+    }
+
+    const key = settings.geminiApiKey || this.getPersistedApiKey() || process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+    if (!key) {
+      throw new Error('Gemini API key not configured');
+    }
+
+    const ai = new GoogleGenAI({ apiKey: key });
+    const isThinkingSupported = settings.model.includes('gemini-3') || settings.model.includes('gemini-2.5');
+
+    let systemPrompt = getEffectiveSystemInstruction(settings, messages);
+    if (estimateTokens(systemPrompt) > 2000) {
+      systemPrompt = systemPrompt.slice(0, 6000) + '...';
+    }
+
+    const normalizeModel = (m: string) => {
+      const raw = (m || '').toLowerCase();
+      if (raw.includes('gemini-3') || raw.includes('gemini-1.5')) {
+        return raw.includes('pro') ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+      }
+      if (raw.startsWith('gemini-')) return raw;
+      return 'gemini-2.5-flash';
+    };
+    const modelToUse = normalizeModel(settings.model);
+
+    const contents = messages.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    }));
+
+    // Serve cached answers instantly when available (mirrors generateChat)
+    if (promptCacheService.enabled) {
+      const conversationContext = messages
+        .slice(0, -1)
+        .map(m => `${m.role}:${m.content}`)
+        .join('|');
+      const cached = promptCacheService.lookup(
+        settings.model, lastMsg.content, systemPrompt,
+        settings.temperature, settings.maxTokens ?? 4000,
+        conversationContext
+      );
+      if (cached) {
+        yield { text: cached.response, images: cached.images || [], sources: [] };
+        return;
+      }
+    }
+
+    try {
+      const stream = await ai.models.generateContentStream({
+        model: modelToUse,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: settings.temperature,
+          topP: settings.topP ?? 1.0,
+          maxOutputTokens: settings.maxTokens ?? 4000,
+          thinkingConfig: isThinkingSupported && modelToUse === 'gemini-2.5-pro' ? {
+            thinkingBudget: settings.thinkingBudget
+          } : undefined,
+        },
+      });
+
+      let cumulative = '';
+      for await (const chunk of stream) {
+        if (signal?.aborted) {
+          throw new DOMException('Generation cancelled by user.', 'AbortError');
+        }
+        const t = (chunk as any).text || '';
+        if (t) {
+          cumulative += t;
+          yield { text: cumulative, images: [], sources: [] };
+        }
+      }
+
+      if (!cumulative.trim()) {
+        // Empty stream — fall back to the blocking path before failing upstream.
+        yield await this.generateChat(settings, messages, signal);
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError' || signal?.aborted) throw err;
+      console.warn('[Gemini] stream failed, falling back to blocking path:', err?.message);
+      yield await this.generateChat(settings, messages, signal);
+    }
   }
 
   async verifyApiKey(key: string): Promise<boolean> {

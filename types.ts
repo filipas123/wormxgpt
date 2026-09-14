@@ -1,5 +1,3 @@
-declare module '@google/adk';
-
 // ── Shared Provider Type ─────────────────────────────────────────────────────
 export type ProviderType =
   | 'gemini' | 'groq' | 'pollinations' | 'cerebras' | 'siliconflow'

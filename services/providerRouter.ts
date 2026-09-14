@@ -236,15 +236,14 @@ export class ProviderRouter {
         };
 
         let result: StreamChunk;
-        if (typeof service.generateChat === 'function') {
-          result = await service.generateChat(effectiveSettings, messages, signal);
-        } else {
-          // Prefer incremental streaming when the caller supplied onChunk:
-          // forward each cumulative chunk immediately instead of waiting for
-          // the full response, so the UI can render tokens as they arrive.
-          if (onChunk) {
-            let produced = false;
-            let last: StreamChunk | null = null;
+        if (onChunk && typeof service.streamChat === 'function') {
+          // Caller asked for live rendering: prefer the provider's streaming
+          // generator and forward incremental (cumulative) chunks as they
+          // arrive. Falls through to the blocking path below only if the
+          // stream produced nothing usable.
+          let produced = false;
+          let last: StreamChunk | null = null;
+          try {
             for await (const chunk of service.streamChat(effectiveSettings, messages, signal)) {
               if (chunk.text || (chunk.images && chunk.images.length > 0)) {
                 last = chunk;
@@ -252,15 +251,24 @@ export class ProviderRouter {
                 if (chunk.text) produced = true;
               }
             }
-            result = last || { text: '', images: [] };
-            if (!produced && !(result.images && result.images.length > 0)) {
-              // Stream yielded nothing usable — treat as provider failure to
-              // trigger the normal fallback chain.
+          } catch (streamErr: any) {
+            if (streamErr.name === 'AbortError' || signal?.aborted) throw streamErr;
+            // Remember the stream failure; decide below whether to retry blocking.
+            last = null;
+          }
+          result = last || { text: '', images: [] };
+          if (!produced && !(result.images && result.images.length > 0)) {
+            if (typeof service.generateChat === 'function') {
+              // One blocking retry before giving up and moving to the next provider.
+              result = await service.generateChat(effectiveSettings, messages, signal);
+            } else {
               throw new Error('Provider stream returned no content');
             }
-          } else {
-            result = await this.collectStream(service.streamChat(effectiveSettings, messages, signal));
           }
+        } else if (typeof service.generateChat === 'function') {
+          result = await service.generateChat(effectiveSettings, messages, signal);
+        } else {
+          result = await this.collectStream(service.streamChat(effectiveSettings, messages, signal));
         }
 
         if (result && (result.text || (result.images && result.images.length > 0))) {

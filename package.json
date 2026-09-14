@@ -67,8 +67,7 @@
   ],
   "dependencies": {
     "@a2a-js/sdk": "^0.3.13",
-    "@faker-js/faker": "^9.9.0",
-    "@google/adk": "^0.5.0",
+    "@faker-js/faker": "^10.6.0",
     "@google/genai": "^1.37.0",
     "@heyputer/puter.js": "^2.5.4",
     "@modelcontextprotocol/sdk": "^1.27.1",
@@ -80,7 +79,7 @@
     "ollama": "^0.6.3",
     "p-limit": "^6.2.0",
     "prismjs": "^1.30.0",
-    "puppeteer": "^24.40.0",
+    "puppeteer": "^25.11.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "^19.2.3",
