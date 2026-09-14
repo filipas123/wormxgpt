@@ -8,6 +8,28 @@ export interface ToastNotification {
   type?: 'success' | 'error' | 'info' | 'warning';
 }
 
+/** Shared hook: close on Escape + lock background scroll while a modal is open */
+const useModalBehavior = (isOpen: boolean, onClose: () => void) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+};
+
 export const ConfirmModal: React.FC<{
   isOpen: boolean;
   title?: string;
@@ -27,13 +49,21 @@ export const ConfirmModal: React.FC<{
   onConfirm,
   onCancel,
 }) => {
+  useModalBehavior(isOpen, onCancel);
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div 
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      onClick={onCancel}
+      role="presentation"
+    >
+      <div
         className="w-full max-w-md bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100"
         role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${isDanger ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
@@ -79,6 +109,7 @@ export const AlertModal: React.FC<{
   type?: 'info' | 'success' | 'warning' | 'error';
   onClose: () => void;
 }> = ({ isOpen, title = 'Notification', message, type = 'info', onClose }) => {
+  useModalBehavior(isOpen, onClose);
   if (!isOpen) return null;
 
   const getIcon = () => {
@@ -95,8 +126,18 @@ export const AlertModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100">
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-md bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/40">
@@ -139,6 +180,8 @@ export const ExportImportModal: React.FC<{
   const [importJson, setImportJson] = useState('');
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [copied, setCopied] = useState(false);
+
+  useModalBehavior(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -192,8 +235,18 @@ export const ExportImportModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-xl bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100">
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-xl bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Conversation Data Hub"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
             <Terminal className="w-5 h-5 text-indigo-400" />

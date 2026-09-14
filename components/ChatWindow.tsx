@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Terminal, Sparkles, ShieldAlert, Cpu, Eye, ArrowDown, Loader2,
-  ArrowRightLeft, CheckCircle, XCircle, Zap, Activity
+  ArrowRightLeft, XCircle, Activity
 } from 'lucide-react';
 import { useWormGPT } from '../context/GlobalContext';
 import { ChatMessage } from './ChatMessage';
@@ -92,6 +92,47 @@ export const ChatWindow: React.FC<{
   const messages = useMemo(() => activeSession.messages, [activeSession.messages]);
   const lastMessage = messages[messages.length - 1];
   const lastMessageContent = lastMessage?.content;
+  const lastMessageIdRef = useRef<string | null>(null);
+
+  // Progressive reveal: completed responses fade in progressively instead of
+  // popping in all at once after a blocking request/response round-trip.
+  const [revealLimit, setRevealLimit] = useState<number | null>(null);
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    const mid = lastMsg ? `${lastMsg.timestamp ?? ''}-${messages.length}` : null;
+    if (mid !== lastMessageIdRef.current) {
+      lastMessageIdRef.current = mid;
+      setRevealLimit(null);
+      return;
+    }
+    if (!lastMsg || lastMsg.role !== 'model') return;
+    if (isStreaming || revealLimit !== null) return;
+    const total = lastMsg.content?.length || 0;
+    if (total < 400) return;
+    let shown = Math.floor(total * 0.25);
+    setRevealLimit(shown);
+    const timer = setInterval(() => {
+      shown += Math.max(48, Math.ceil(total / 40));
+      if (shown >= total) {
+        setRevealLimit(null);
+      } else {
+        setRevealLimit(shown);
+      }
+    }, 40);
+    return () => clearInterval(timer);
+  }, [messages, isStreaming, revealLimit]);
+
+  const displayMessages = useMemo(() => {
+    if (revealLimit === null || messages.length === 0) return messages;
+    const lastIdx = messages.length - 1;
+    const lastMsg = messages[lastIdx];
+    if (!lastMsg || lastMsg.role !== 'model') return messages;
+    const trimmed = {
+      ...lastMsg,
+      content: (lastMsg.content || '').slice(0, revealLimit),
+    };
+    return [...messages.slice(0, lastIdx), trimmed];
+  }, [messages, revealLimit]);
 
   // Check for fallback in the last message's routing events
   useEffect(() => {
@@ -147,6 +188,13 @@ export const ChatWindow: React.FC<{
     }
   }, [lastMessageContent, isStreaming]);
 
+  // Keep pinned to bottom during progressive reveal as well
+  useEffect(() => {
+    if (revealLimit !== null && !userScrolledUp.current && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [revealLimit]);
+
   const generatingModel = activeGeneratingModel || settings.model;
   const generatingProvider = activeGeneratingProvider || settings.aiProvider;
   const isFreeModel = lastMessage?.generatedBy?.isFree;
@@ -156,10 +204,13 @@ export const ChatWindow: React.FC<{
       <div
         ref={scrollRef}
         onScroll={handleScroll}
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation messages"
         className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar relative z-10 select-text"
       >
         <div className="max-w-4xl mx-auto min-h-full flex flex-col">
-          {messages.length === 0 ? (
+          {displayMessages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-in fade-in duration-300">
               {/* Terminal Logo */}
               <div className="mb-6 relative">
@@ -243,13 +294,17 @@ export const ChatWindow: React.FC<{
             </div>
           ) : (
             <div className="space-y-6 pb-20 select-text">
-              {messages.map((msg, i) => (
+              {displayMessages.map((msg, i) => (
                 <ChatMessage
                   key={`${msg.timestamp || i}-${i}`}
                   message={msg}
                   settings={settings}
-                  isGenerating={isStreaming && i === messages.length - 1 && (msg.role === 'model' || msg.role === 'assistant')}
-                  activeToolCalling={isStreaming && i === messages.length - 1 ? activeToolCalling : null}
+                  isGenerating={
+                    (isStreaming || revealLimit !== null) &&
+                    i === displayMessages.length - 1 &&
+                    (msg.role === 'model' || msg.role === 'assistant')
+                  }
+                  activeToolCalling={isStreaming && i === displayMessages.length - 1 ? activeToolCalling : null}
                 />
               ))}
             </div>
@@ -283,6 +338,7 @@ export const ChatWindow: React.FC<{
           onClick={() => scrollToBottom(true)}
           className="absolute bottom-6 right-6 p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg shadow-indigo-950/60 hover:scale-105 active:scale-95 transition-all z-20 flex items-center justify-center"
           title="Scroll to latest message"
+          aria-label="Scroll to latest message"
         >
           <ArrowDown className="w-4 h-4" />
         </button>

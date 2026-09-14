@@ -153,6 +153,19 @@ export const ModelSelectorModal: React.FC<{
 }> = ({ isOpen, onClose, targetMode = 'text' }) => {
   const { settings, setSettings } = useWormGPT();
   const [activeTab, setActiveTab] = useState<TabType>(targetMode === 'vision' ? 'vision' : 'text');
+
+  // Close on Escape while the selector is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onClose]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<ModelTag | 'all' | 'free'>('all');
   const [selectedProvider, setSelectedProvider] = useState<string>('all');
@@ -230,7 +243,10 @@ export const ModelSelectorModal: React.FC<{
 
   const handleCustomSubmit = () => {
     if (!customModelId.trim()) return;
-    if (activeTab === 'vision' || activeTab === 'custom') {
+    if (activeTab === 'vision') {
+      // Fix: custom vision models must target the vision slots, not the text slots
+      setSettings(prev => ({ ...prev, visionModel: customModelId.trim(), visionProvider: customProvider as any }));
+    } else if (activeTab === 'custom') {
       setSettings(prev => ({ ...prev, model: customModelId.trim(), aiProvider: customProvider as any }));
     }
     onClose();
@@ -249,12 +265,17 @@ export const ModelSelectorModal: React.FC<{
   const currentModel = activeTab === 'vision' ? currentVisionModel : currentTextModel;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="presentation">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-3xl max-h-[88vh] bg-[#0b0f1c] border border-slate-800/80 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Model and Provider Selector"
+        className="relative w-full max-w-3xl max-h-[88vh] bg-[#0b0f1c] border border-slate-800/80 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
 
         {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-slate-800/60 shrink-0">

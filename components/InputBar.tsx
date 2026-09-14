@@ -37,6 +37,14 @@ export const InputBar: React.FC<{
   const [pxpipeStats, setPxpipeStats] = useState<PxpipeTokenStats | null>(null);
   const [isCompressingPxpipe, setIsCompressingPxpipe] = useState(false);
 
+  // Auto-grow the textarea with content (capped by max-h-48 CSS)
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
   // Speech Recognition Hook
   const {
     isListening,
@@ -275,7 +283,7 @@ export const InputBar: React.FC<{
       }
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
@@ -297,7 +305,13 @@ export const InputBar: React.FC<{
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB per file — avoids data-URL memory blowups
+
     Array.from(files).forEach(file => {
+      if (file.size > MAX_FILE_BYTES) {
+        alert(`"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB — attachments are limited to 8 MB.`);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (uploadEvent) => {
         const result = uploadEvent.target?.result as string;
@@ -420,13 +434,14 @@ export const InputBar: React.FC<{
             onClick={handleInputCursorCheck}
             onKeyUp={handleInputCursorCheck}
             onKeyDown={handleKeyDown}
+            aria-label="Message input"
             placeholder={
               settings.systemOverride
                 ? "Send command... (System Override Active)"
                 : "Ask WormGPT, type /tool for tools, @model to switch models..."
             }
             rows={1}
-            className="w-full pl-4 pr-28 py-3.5 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed min-h-[48px] max-h-48"
+            className="w-full pl-4 pr-28 pt-3.5 pb-3 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed min-h-[48px] max-h-48 overflow-y-auto"
           />
 
           {/* Hidden File Input */}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, Settings, Download, Trash2, ChevronLeft, ChevronRight, 
   MessageSquare, Search, Terminal, ShieldAlert
@@ -25,6 +25,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClear,
   onExport
 }) => {
+  // Track viewport to switch between overlay drawer (mobile) and push layout (desktop)
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 640 : false
+  );
+
+  useEffect(() => {
+    const checkViewport = () => setIsMobile(window.innerWidth < 640);
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
   const { 
     sessions: ctxSessions, 
     activeSessionId: ctxActiveSessionId, 
@@ -71,14 +82,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (propOnNewSession) {
       propOnNewSession();
     }
+    // Close the drawer after creating a session on mobile so the chat is visible
+    if (isMobile) setIsSidebarOpen(false);
   };
 
-  return (
-    <aside 
+  const handleSelectSession = (id: string) => {
+    handleSelect(id);
+    // Close the drawer after selecting a session on mobile so the chat is visible
+    if (isMobile) setIsSidebarOpen(false);
+  };  return (
+    <>
+      {/* Mobile backdrop: tap to close the overlay drawer */}
+      {isMobile && isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+      aria-label="Session list sidebar"
       className={`fixed inset-y-0 left-0 z-50 bg-[#0d1322]/95 backdrop-blur-xl border-r border-indigo-950/40 flex flex-col transition-all duration-300 ease-in-out ${
         isSidebarOpen ? 'w-64 sm:w-72' : 'w-16'
-      } shadow-2xl shadow-black/60 font-sans select-none`}
-    >
+      } shadow-2xl shadow-black/60 font-sans select-none`
+    }>
       {/* Brand Header */}
       <div className="p-3.5 border-b border-indigo-950/50 flex items-center justify-between h-16 shrink-0 bg-[#090d16]/80">
         {isSidebarOpen ? (
@@ -173,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div
                 key={session.id}
-                onClick={() => handleSelect(session.id)}
+                onClick={() => handleSelectSession(session.id)}
                 className={`group relative w-full text-left p-2 rounded-md transition-all text-xs font-mono flex items-center gap-2 cursor-pointer ${
                   isActive
                     ? 'bg-indigo-950/50 text-indigo-200 border border-indigo-800/40 shadow-sm'
@@ -267,6 +294,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

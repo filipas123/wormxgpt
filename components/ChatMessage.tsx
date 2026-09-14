@@ -358,8 +358,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
   // Classify error from content
   const isErrorMessage = message.isError || (
     message.content?.startsWith('CRITICAL_FAILURE:') ||
-    message.content?.startsWith('[ERROR]') ||
-    message.content?.includes('API key') && message.content?.includes('failed')
+    message.content?.startsWith('[ERROR]')
   );
 
   const classifyError = (content: string) => {
@@ -406,6 +405,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
               <User className="w-3 h-3" />
             </div>
           </>
+        )}
+        {message.timestamp && (
+          <span className="text-[10px] text-slate-600 font-mono select-none">
+            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
         )}
       </div>
 

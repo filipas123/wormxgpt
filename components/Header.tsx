@@ -119,7 +119,7 @@ export const Header: React.FC<{
               className={`h-full rounded-full transition-all duration-300 ${
                 pct >= 0.8 ? 'bg-rose-500' : pct >= 0.5 ? 'bg-amber-400' : 'bg-emerald-400'
               }`}
-              style={{ width: `${Math.max(5, pctDisp)}%` }}
+              style={{ width: pctDisp > 0 ? `${pctDisp}%` : '0%' }}
             />
           </div>
           <span className="font-mono">{pctDisp}%</span>
