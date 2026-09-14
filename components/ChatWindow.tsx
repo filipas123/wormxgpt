@@ -71,7 +71,12 @@ const FallbackEventCard: React.FC<{
         {reason && <span className="text-slate-500 ml-1.5 truncate">({reason.slice(0, 50)})</span>}
       </div>
     </div>
-    <button onClick={onDismiss} className="text-slate-600 hover:text-slate-400 transition-colors ml-2 shrink-0">
+    <button
+      type="button"
+      onClick={onDismiss}
+      aria-label="Dismiss fallback notification"
+      className="text-slate-600 hover:text-slate-400 transition-colors ml-2 shrink-0"
+    >
       <XCircle className="w-3.5 h-3.5" />
     </button>
   </div>
@@ -96,17 +101,25 @@ export const ChatWindow: React.FC<{
 
   // Progressive reveal: completed responses fade in progressively instead of
   // popping in all at once after a blocking request/response round-trip.
+  // Skipped when the message was already rendered via real token streaming.
   const [revealLimit, setRevealLimit] = useState<number | null>(null);
+  const streamedViaTokensRef = useRef(false);
   useEffect(() => {
     const lastMsg = messages[messages.length - 1];
     const mid = lastMsg ? `${lastMsg.timestamp ?? ''}-${messages.length}` : null;
     if (mid !== lastMessageIdRef.current) {
       lastMessageIdRef.current = mid;
+      streamedViaTokensRef.current = false;
       setRevealLimit(null);
       return;
     }
     if (!lastMsg || lastMsg.role !== 'model') return;
-    if (isStreaming || revealLimit !== null) return;
+    if (isStreaming) {
+      // Content is updating live — real streaming is active for this message
+      if (lastMsg.content) streamedViaTokensRef.current = true;
+      return;
+    }
+    if (revealLimit !== null || streamedViaTokensRef.current) return;
     const total = lastMsg.content?.length || 0;
     if (total < 400) return;
     let shown = Math.floor(total * 0.25);
@@ -244,22 +257,26 @@ export const ChatWindow: React.FC<{
 
               {/* Active Config Badges */}
               <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-                <div
+                <button
+                  type="button"
                   onClick={() => onOpenModelSelector?.('text')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer hover:border-indigo-500/50 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer hover:border-indigo-500/50 hover:bg-indigo-600/10 transition-all"
+                  title="Change the primary text model"
                 >
                   <Cpu className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Text: {settings.model}</span>
                   <span className="text-slate-500 text-[10px]">({settings.aiProvider})</span>
-                </div>
+                </button>
 
-                <div
+                <button
+                  type="button"
                   onClick={() => onOpenModelSelector?.('vision')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer hover:border-violet-500/50 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer hover:border-violet-500/50 hover:bg-violet-600/10 transition-all"
+                  title="Change the vision model"
                 >
                   <Eye className="w-3.5 h-3.5 text-violet-400" />
                   <span>Vision: {settings.visionModel || 'gemini-2.5-flash'}</span>
-                </div>
+                </button>
 
                 {settings.autoFallback && (
                   <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-1.5">

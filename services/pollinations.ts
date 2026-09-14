@@ -99,8 +99,147 @@ export class PollinationsService {
     messages: Message[], 
     signal?: AbortSignal
   ): AsyncGenerator<StreamYield> {
+    // Real token streaming over SSE for plain text requests (no tool turns).
+    // Tool-call flows and media commands still use the blocking path.
+    const lastMsg = messages[messages.length - 1];
+    const prompt = (lastMsg?.content || '').trim().toLowerCase();
+    const isMediaCommand = prompt.startsWith('/image ') || prompt.startsWith('/video ') || prompt.startsWith('/audio ');
+    if (!isMediaCommand) {
+      const streamed = yield* this.streamTextSSE(settings, messages, signal);
+      if (streamed) return;
+    }
     const result = await this.generateChat(settings, messages, signal);
     yield result;
+  }
+
+  /**
+   * True token streaming over SSE from text.pollinations.ai.
+   * Yields cumulative text; returns true if the stream produced content,
+   * false if the endpoint failed (caller falls back to blocking path).
+   */
+  private async *streamTextSSE(
+    settings: AppSettings,
+    messages: Message[],
+    signal?: AbortSignal
+  ): AsyncGenerator<StreamYield, boolean, void> {
+    // Skip SSE for vision inputs (they ride the main request pipeline)
+    const hasImages = messages.some(m => m.images && m.images.length > 0);
+    if (hasImages) return false;
+
+    let systemInstruction = getEffectiveSystemInstruction(settings, messages);
+    if (systemInstruction && estimateTokens(systemInstruction) > 1500) {
+      systemInstruction = systemInstruction.substring(0, 4000) + '\n[System prompt truncated for token limit]';
+    }
+
+    const openAIMessages: Array<any> = [];
+    if (systemInstruction && systemInstruction.trim()) {
+      openAIMessages.push({ role: 'system', content: systemInstruction });
+    }
+    for (const msg of messages) {
+      openAIMessages.push({
+        role: msg.role === 'model' ? 'assistant' : msg.role,
+        content: msg.content
+      });
+    }
+
+    // Model name mapping (mirrors generateText)
+    let model = (settings.model || 'openai').toLowerCase();
+    if (model.includes('deepseek-r1') || model === 'deepseek-reasoner') model = 'deepseek-reasoner';
+    else if (model.includes('deepseek')) model = 'deepseek';
+    else if (model.includes('claude-3-7') || model.includes('claude-3-5') || model.includes('claude')) model = 'claude';
+    else if (model.includes('mistral')) model = 'mistral';
+    else if (model.includes('qwen')) model = 'qwen-coder';
+    else if (model.includes('llama')) model = 'llama';
+    else if (model.includes('gemini')) model = 'gemini';
+    else if (model.includes('search')) model = 'searchgpt';
+    else if (model === 'openai-large' || model === 'openai-fast') { /* keep as-is */ }
+
+    const bearerToken = this.normalizeBearerToken(
+      settings.pollinationsApiKey || this.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('pollinationsApiKey') : '') || ''
+    );
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream'
+    };
+    if (bearerToken) {
+      headers['Authorization'] = `Bearer ${bearerToken}`;
+    }
+
+    let resp: Response;
+    try {
+      resp = await fetch(this.fallbackTextUrl, {
+        signal,
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          messages: openAIMessages,
+          model,
+          seed: Math.floor(Math.random() * 1000000),
+          stream: true,
+          json: false
+        })
+      });
+    } catch {
+      return false;
+    }
+
+    if (!resp.ok || !resp.body) return false;
+
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('event-stream')) {
+      // Endpoint ignored stream:true and returned a single JSON/text body —
+      // treat it as a successful blocking response instead of failing.
+      const textResult = await resp.text();
+      if (textResult && textResult.trim()) {
+        yield { text: textResult, images: [], sources: [] };
+        return true;
+      }
+      return false;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let cumulative = '';
+
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          try { await reader.cancel(); } catch {}
+          throw new DOMException('Generation cancelled by user.', 'AbortError');
+        }
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              const json = JSON.parse(payload);
+              const delta = json.choices?.[0]?.delta?.content ?? json.choices?.[0]?.text ?? '';
+              if (delta) {
+                cumulative += delta;
+                yield { text: cumulative, images: [], sources: [] };
+              }
+            } catch {
+              // Malformed JSON chunk — skip
+            }
+          }
+        }
+      }
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+
+    return cumulative.length > 0;
   }
 
   private async generateText(

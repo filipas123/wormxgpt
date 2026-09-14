@@ -342,53 +342,61 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
 
   const deleteSession = useCallback(async (targetSessionId: string) => {
     handleAbort();
-    const targetSession = sessions.find(s => s.id === targetSessionId);
-    
-    // 1. Cleanly revoke all blob URLs held in this session's attachments
-    if (targetSession?.messages) {
-      for (const msg of targetSession.messages) {
-        if (msg.images) {
-          for (const img of msg.images) {
-            if (typeof img === 'string' && img.startsWith('blob:')) {
-              try { URL.revokeObjectURL(img); } catch {}
+
+    // Read the CURRENT session list via the state setter to avoid acting on a
+    // stale closure (previous bug: deleting targeted a snapshot from render
+    // time, so blob revocation and active-id reassignment could use outdated
+    // data when sessions changed between render and click).
+    let targetSession: ChatSession | undefined;
+    let nextSessions: ChatSession[] = [];
+    let nextActiveId = activeSessionId;
+
+    setSessions(prev => {
+      targetSession = prev.find(s => s.id === targetSessionId);
+
+      // 1. Revoke blob URLs held by this session's attachments
+      if (targetSession?.messages) {
+        for (const msg of targetSession.messages) {
+          if (msg.images) {
+            for (const img of msg.images) {
+              if (typeof img === 'string' && img.startsWith('blob:')) {
+                try { URL.revokeObjectURL(img); } catch {}
+              }
             }
           }
         }
       }
-    }
 
-    // 2. Perform zero-trace removal in IndexedDB database
+      // 2. Compute sanitized session list
+      const remaining = prev.filter(s => s.id !== targetSessionId);
+      nextSessions = remaining;
+      if (nextSessions.length === 0) {
+        const freshSession: ChatSession = {
+          id: crypto.randomUUID(),
+          messages: [],
+          title: 'New Session',
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        nextSessions = [freshSession];
+        nextActiveId = freshSession.id;
+      } else if (activeSessionId === targetSessionId) {
+        nextActiveId = nextSessions[0].id;
+      }
+      return nextSessions;
+    });
+
+    // 3. Perform zero-trace removal in IndexedDB database
     try {
       await sessionStore.delete(targetSessionId);
     } catch (err) {
       console.warn('[WormGPT] IDB session delete warning:', err);
     }
 
-    // 3. Compute sanitized session list
-    const remaining = sessions.filter(s => s.id !== targetSessionId);
-    let nextSessions = remaining;
-    let nextActiveId = activeSessionId;
-
-    if (nextSessions.length === 0) {
-      const freshSession: ChatSession = {
-        id: crypto.randomUUID(),
-        messages: [],
-        title: 'New Session',
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      };
-      nextSessions = [freshSession];
-      nextActiveId = freshSession.id;
-    } else if (activeSessionId === targetSessionId) {
-      nextActiveId = nextSessions[0].id;
-    }
-
-    // 4. Update state & active session
-    setSessions(nextSessions);
+    // 4. Update active session & persist
     setActiveSessionId(nextActiveId);
     localStorage.setItem(ACTIVE_ID_KEY, nextActiveId);
 
-    // 5. Instantly overwrite local storage and device-bound encrypted fingerprint partition
     if (deviceSpecs?.fingerprint) {
       try {
         await saveHistoryWithFingerprint(nextSessions, deviceSpecs.fingerprint);
@@ -399,9 +407,9 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
       localStorage.setItem(SESSIONS_KEY, JSON.stringify(nextSessions));
     }
 
-    // 6. Broadcast sanitized state across browser windows/tabs
+    // 5. Broadcast sanitized state across browser windows/tabs
     sessionSync.broadcastSessionUpdate(nextActiveId, nextSessions);
-  }, [sessions, activeSessionId, handleAbort, deviceSpecs]);
+  }, [activeSessionId, handleAbort, deviceSpecs]);
 
   const purgeAllSessions = useCallback(async () => {
     handleAbort();
@@ -503,7 +511,18 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
             for await (const chunk of multiAgentOrchestrator.executeParallel(
               multiAgentTasks, effectiveExecutionSettings, updatedMessages, controller.signal
             )) {
-              if (chunk.text) lastText = chunk.text;
+              if (chunk.text) {
+                lastText = chunk.text;
+                // Live-update UI during multi-agent generation too
+                setSessions(prev => prev.map(s => s.id === activeSessionId ? {
+                  ...s,
+                  messages: s.messages.map((m, idx) =>
+                    idx === s.messages.length - 1 && (m.role === 'model' || m.role === 'assistant')
+                      ? { ...m, content: chunk.text }
+                      : m
+                  )
+                } : s));
+              }
               if (chunk.images) lastImages = chunk.images;
             }
             responseChunk = { text: lastText, images: lastImages };
@@ -522,7 +541,20 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
             updatedMessages, 
             controller.signal,
             (toolName) => setActiveToolCalling(toolName),
-            () => setActiveToolCalling(null)
+            () => setActiveToolCalling(null),
+            // Live streaming: repaint the model placeholder as tokens arrive
+            (chunk) => {
+              if (controller.signal.aborted) return;
+              if (!chunk.text) return;
+              setSessions(prev => prev.map(s => s.id === activeSessionId ? {
+                ...s,
+                messages: s.messages.map((m, idx) =>
+                  idx === s.messages.length - 1 && (m.role === 'model' || m.role === 'assistant')
+                    ? { ...m, content: chunk.text }
+                    : m
+                )
+              } : s));
+            }
           );
         }
 

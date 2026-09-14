@@ -110,14 +110,16 @@ export class ChatService {
   }
 
   /**
-   * Synchronously generate chat completion for user messages
+   * Synchronously generate chat completion for user messages.
+   * onChunk receives incremental stream chunks for live UI rendering.
    */
   public async generateChatResponse(
     settings: AppSettings,
     messages: Message[],
     signal?: AbortSignal,
     onToolStart?: (toolName: string) => void,
-    onToolEnd?: (toolName: string) => void
+    onToolEnd?: (toolName: string) => void,
+    onChunk?: (chunk: StreamChunk) => void
   ): Promise<StreamChunk> {
     const { toolInvocations, augmentedMessages } = await this.executeApplicableTools(
       settings,
@@ -126,7 +128,7 @@ export class ChatService {
       onToolStart,
       onToolEnd
     );
-    const response = await providerRouter.generateWithFallback(settings, augmentedMessages, signal);
+    const response = await providerRouter.generateWithFallback(settings, augmentedMessages, signal, { onChunk });
     
     return {
       ...response,

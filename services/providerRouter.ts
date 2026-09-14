@@ -169,11 +169,14 @@ export class ProviderRouter {
 
   /**
    * Synchronous Request-Response with Fallback Handling
+   * When opts.onChunk is provided, streaming providers forward incremental
+   * chunks as they arrive (enables live token rendering in the UI).
    */
   async generateWithFallback(
     settings: AppSettings,
     messages: Message[],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    opts?: { onChunk?: (chunk: StreamChunk) => void }
   ): Promise<StreamChunk> {
     const primaryProvider = settings.aiProvider || 'pollinations';
     const autoFallback = settings.autoFallback ?? true;
@@ -207,6 +210,7 @@ export class ProviderRouter {
     }
 
     let lastErrorMsg = '';
+    const onChunk = opts?.onChunk;
 
     for (let i = 0; i < chain.length; i++) {
       const { provider, model } = chain[i];
@@ -235,7 +239,28 @@ export class ProviderRouter {
         if (typeof service.generateChat === 'function') {
           result = await service.generateChat(effectiveSettings, messages, signal);
         } else {
-          result = await this.collectStream(service.streamChat(effectiveSettings, messages, signal));
+          // Prefer incremental streaming when the caller supplied onChunk:
+          // forward each cumulative chunk immediately instead of waiting for
+          // the full response, so the UI can render tokens as they arrive.
+          if (onChunk) {
+            let produced = false;
+            let last: StreamChunk | null = null;
+            for await (const chunk of service.streamChat(effectiveSettings, messages, signal)) {
+              if (chunk.text || (chunk.images && chunk.images.length > 0)) {
+                last = chunk;
+                onChunk(chunk);
+                if (chunk.text) produced = true;
+              }
+            }
+            result = last || { text: '', images: [] };
+            if (!produced && !(result.images && result.images.length > 0)) {
+              // Stream yielded nothing usable — treat as provider failure to
+              // trigger the normal fallback chain.
+              throw new Error('Provider stream returned no content');
+            }
+          } else {
+            result = await this.collectStream(service.streamChat(effectiveSettings, messages, signal));
+          }
         }
 
         if (result && (result.text || (result.images && result.images.length > 0))) {

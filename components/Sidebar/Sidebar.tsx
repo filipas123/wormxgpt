@@ -51,6 +51,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleSelect = onSelectSession || ctxSetActiveSessionId;
 
   const [searchTerm, setSearchTerm] = useState('');
+  // Pending delete confirmation: which session id is awaiting confirmation
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Normalize sessions with valid updatedAt
   const normalizedSessions = useMemo(() => {
@@ -227,16 +229,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {isSidebarOpen && onDeleteSession && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteSession(session.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 rounded transition-all shrink-0"
-                    title="Delete Session"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  pendingDeleteId === session.id ? (
+                    // Inline confirm: replaces the trash icon for 5s or until decided
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingDeleteId(null);
+                          onDeleteSession(session.id);
+                        }}
+                        aria-label="Confirm delete session"
+                        className="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold transition-colors"
+                        title="Confirm delete"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteId(null)}
+                        aria-label="Cancel delete"
+                        className="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] font-bold transition-colors"
+                        title="Cancel"
+                      >
+                        Keep
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPendingDeleteId(session.id);
+                        // Auto-cancel after 5 seconds of inaction
+                        setTimeout(() => {
+                          setPendingDeleteId(prev => prev === session.id ? null : prev);
+                        }, 5000);
+                      }}
+                      aria-label={`Delete session: ${session.title || 'Untitled'}`}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 rounded transition-all shrink-0"
+                      title="Delete Session"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )
                 )}
               </div>
             );

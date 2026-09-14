@@ -40,6 +40,7 @@ export const Header: React.FC<{
         {/* Toggle Sidebar */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
           title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
         >
@@ -87,7 +88,8 @@ export const Header: React.FC<{
 
           {/* System Override Status Indicator */}
           {settings.systemOverride && (
-            <div 
+            <button
+              type="button"
               onClick={() => setIsSettingsOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-semibold cursor-pointer hover:bg-amber-500/25 transition-all shrink-0"
               title="System Override Active: Default conversational guardrails bypassed"
@@ -95,7 +97,7 @@ export const Header: React.FC<{
               <ShieldAlert className="w-3.5 h-3.5" />
               <span className="hidden md:inline">SYSTEM OVERRIDE ACTIVE</span>
               <span className="md:hidden">OVERRIDE</span>
-            </div>
+            </button>
           )}
         </div>
       </div>
@@ -128,6 +130,7 @@ export const Header: React.FC<{
         {/* New Session Button */}
         <button
           onClick={onNewSession}
+          aria-label="New chat session"
           className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
           title="New Chat Session"
         >
@@ -137,6 +140,7 @@ export const Header: React.FC<{
         {/* Settings Button */}
         <button
           onClick={() => setIsSettingsOpen(true)}
+          aria-label="Open settings"
           className="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800/60 transition-colors"
           title="Open Settings"
         >
