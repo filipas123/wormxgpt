@@ -148,6 +148,26 @@ export class ProviderRouter {
   }
 
   /**
+   * Collapse a streaming generator into a single StreamChunk for providers that
+   * only implement streamChat. Services in this codebase yield CUMULATIVE text
+   * (each chunk carries the full text so far), so text takes the latest value;
+   * optional fields (images/sources/video/audio/toolInvocations) are preserved
+   * from the most recent chunk that supplied them instead of being dropped.
+   */
+  private async collectStream(gen: AsyncGenerator<StreamChunk>): Promise<StreamChunk> {
+    const acc: StreamChunk = { text: '', images: [] };
+    for await (const chunk of gen) {
+      if (chunk.text) acc.text = chunk.text;
+      if (chunk.images && chunk.images.length) acc.images = chunk.images;
+      if (chunk.sources && chunk.sources.length) acc.sources = chunk.sources;
+      if (chunk.video) acc.video = chunk.video;
+      if (chunk.audio) acc.audio = chunk.audio;
+      if (chunk.toolInvocations && chunk.toolInvocations.length) acc.toolInvocations = chunk.toolInvocations;
+    }
+    return acc;
+  }
+
+  /**
    * Synchronous Request-Response with Fallback Handling
    */
   async generateWithFallback(
@@ -215,16 +235,7 @@ export class ProviderRouter {
         if (typeof service.generateChat === 'function') {
           result = await service.generateChat(effectiveSettings, messages, signal);
         } else {
-          // Fallback if provider only implemented streamChat
-          let text = '';
-          let images: string[] = [];
-          let sources: any[] = [];
-          for await (const chunk of service.streamChat(effectiveSettings, messages, signal)) {
-            if (chunk.text) text = chunk.text;
-            if (chunk.images) images = chunk.images;
-            if (chunk.sources) sources = chunk.sources;
-          }
-          result = { text, images, sources };
+          result = await this.collectStream(service.streamChat(effectiveSettings, messages, signal));
         }
 
         if (result && (result.text || (result.images && result.images.length > 0))) {
