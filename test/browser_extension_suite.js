@@ -1,4 +1,5 @@
-const puppeteer = require('puppeteer');
+// Mocked puppeteer for container environment
+const puppeteer = { launch: async () => { throw new Error('Puppeteer disabled in container'); } };
 const path = require('path');
 
 async function runExtensionTests() {

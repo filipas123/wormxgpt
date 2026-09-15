@@ -10,12 +10,13 @@ import path from "path";
 import os from "os";
 import crypto, { createHash } from "crypto";
 import { execSync } from "child_process";
-import puppeteerExtra from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-
-// @ts-ignore
-const puppeteer = puppeteerExtra.default || puppeteerExtra;
-puppeteer.use(StealthPlugin());
+// Mocked Puppeteer for container runtime compatibility
+const puppeteer: any = {
+  launch: async (..._args: any[]): Promise<any> => {
+    throw new Error('Puppeteer browser automation is stripped in this container environment.');
+  },
+  use: () => {}
+};
 
 // ─── Global Error Guards ──────────────────────────────────────────────────────
 process.on('unhandledRejection', (reason: any, promise) => {

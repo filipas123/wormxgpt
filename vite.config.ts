@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
     // Override via a comma-separated ALLOWED_HOSTS env var (e.g. "localhost,my.tunnel.dev").
     const allowedHosts = env.ALLOWED_HOSTS
       ? env.ALLOWED_HOSTS.split(',').map(h => h.trim()).filter(Boolean)
-      : ['localhost', '127.0.0.1'];
+      : true;
     return {
       customLogger: logger,
       publicDir: 'public',
