@@ -60,8 +60,8 @@ export class GeminiService {
     const responseBudget = 4000;
 
     let systemPrompt = getEffectiveSystemInstruction(settings, messages);
-    if (estimateTokens(systemPrompt) > 2000) {
-      systemPrompt = systemPrompt.slice(0, 6000) + '...';
+    if (estimateTokens(systemPrompt) > 30000) {
+      systemPrompt = systemPrompt.slice(0, 90000) + '...';
     }
 
     const systemBudget = estimateTokens(systemPrompt);
@@ -343,8 +343,8 @@ export class GeminiService {
     const isThinkingSupported = settings.model.includes('gemini-3') || settings.model.includes('gemini-2.5');
 
     let systemPrompt = getEffectiveSystemInstruction(settings, messages);
-    if (estimateTokens(systemPrompt) > 2000) {
-      systemPrompt = systemPrompt.slice(0, 6000) + '...';
+    if (estimateTokens(systemPrompt) > 30000) {
+      systemPrompt = systemPrompt.slice(0, 90000) + '...';
     }
 
     const normalizeModel = (m: string) => {

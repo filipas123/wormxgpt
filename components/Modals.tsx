@@ -59,30 +59,30 @@ export const ConfirmModal: React.FC<{
       role="presentation"
     >
       <div
-        className="w-full max-w-md bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100"
+        className="w-full max-w-md bg-[#080204] border border-red-700/80 rounded-xl p-6 shadow-[0_0_30px_rgba(239,68,68,0.3)] shadow-black/90 flex flex-col gap-4 text-red-100 font-mono"
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-lg ${isDanger ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
+          <div className={`p-2.5 rounded-lg ${isDanger ? 'bg-rose-950/80 text-rose-400 border border-rose-600/60 shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'bg-red-950/80 text-red-400 border border-red-600/60 shadow-[0_0_10px_rgba(239,68,68,0.3)]'}`}>
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-base text-slate-100">{title}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">WormGPT Security & Harness Control</p>
+            <h3 className="font-semibold text-base text-red-100">{title}</h3>
+            <p className="text-xs text-red-400/70 mt-0.5 font-mono">WormGPT Security & Harness Control</p>
           </div>
         </div>
 
-        <p className="text-sm text-slate-300 leading-relaxed font-sans py-1">
+        <p className="text-sm text-red-200/90 leading-relaxed font-mono py-1">
           {message}
         </p>
 
-        <div className="flex justify-end gap-2.5 pt-2">
+        <div className="flex justify-end gap-2.5 pt-2 font-mono">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/60 transition-colors"
+            className="px-4 py-2 rounded-lg bg-[#0d0205] hover:bg-red-950/70 text-red-300 text-xs font-medium border border-red-900/80 transition-colors"
           >
             {cancelLabel}
           </button>
@@ -90,8 +90,8 @@ export const ConfirmModal: React.FC<{
             onClick={onConfirm}
             className={`px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition-all ${
               isDanger
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/40'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-950/40'
+                ? 'bg-rose-700 hover:bg-rose-600 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+                : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]'
             }`}
           >
             {confirmLabel}
@@ -127,12 +127,12 @@ export const AlertModal: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="w-full max-w-md bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100"
+        className="w-full max-w-md bg-[#080204] border border-red-700/80 rounded-xl p-6 shadow-[0_0_30px_rgba(239,68,68,0.3)] shadow-black/90 flex flex-col gap-4 text-red-100 font-mono"
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -140,27 +140,27 @@ export const AlertModal: React.FC<{
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/40">
+            <div className="p-2 rounded-lg bg-[#0d0205] border border-red-900/80 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
               {getIcon()}
             </div>
-            <h3 className="font-semibold text-base text-slate-100">{title}</h3>
+            <h3 className="font-semibold text-base text-red-100 font-mono">{title}</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+            className="p-1 rounded-lg text-red-400/80 hover:text-red-100 hover:bg-red-950/60 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-sm text-slate-300 leading-relaxed py-1 font-sans">
+        <p className="text-sm text-red-200/90 leading-relaxed py-1 font-mono">
           {message}
         </p>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 font-mono">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all shadow-md shadow-indigo-950/40"
+            className="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]"
           >
             Acknowledge
           </button>
@@ -236,38 +236,38 @@ export const ExportImportModal: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="w-full max-w-xl bg-[#0d1322] border border-indigo-500/30 rounded-xl p-6 shadow-2xl shadow-indigo-950/50 flex flex-col gap-4 text-slate-100"
+        className="w-full max-w-xl bg-[#080204] border border-red-700/80 rounded-xl p-6 shadow-[0_0_35px_rgba(239,68,68,0.3)] shadow-black/90 flex flex-col gap-4 text-red-100 font-mono"
         role="dialog"
         aria-modal="true"
         aria-label="Conversation Data Hub"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center justify-between border-b border-red-950/80 pb-3">
           <div className="flex items-center gap-2.5">
-            <Terminal className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-base text-slate-100">Conversation Data Hub</h3>
+            <Terminal className="w-5 h-5 text-red-400" />
+            <h3 className="font-semibold text-base text-red-100 font-mono">Conversation Data Hub</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+            className="p-1 rounded-lg text-red-400/80 hover:text-red-100 hover:bg-red-950/60 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex gap-2 p-1 bg-slate-900/80 rounded-lg border border-slate-800">
+        <div className="flex gap-2 p-1 bg-[#050102] rounded-lg border border-red-950/80">
           <button
             onClick={() => setActiveTab('export')}
-            className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-2 font-mono ${
               activeTab === 'export'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                : 'text-red-400/70 hover:text-red-200'
             }`}
           >
             <Download className="w-3.5 h-3.5" />
@@ -275,10 +275,10 @@ export const ExportImportModal: React.FC<{
           </button>
           <button
             onClick={() => setActiveTab('import')}
-            className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-2 font-mono ${
               activeTab === 'import'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                : 'text-red-400/70 hover:text-red-200'
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -287,26 +287,26 @@ export const ExportImportModal: React.FC<{
         </div>
 
         {activeTab === 'export' ? (
-          <div className="flex flex-col gap-3">
-            <p className="text-xs text-slate-300">
+          <div className="flex flex-col gap-3 font-mono">
+            <p className="text-xs text-red-300">
               Export all stored threads, message histories, and reasoning traces in portable JSON format:
             </p>
             <div className="relative">
-              <pre className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto">
+              <pre className="p-3 bg-[#050102] border border-red-950/90 rounded-lg text-[11px] font-mono text-red-200 max-h-48 overflow-y-auto custom-scrollbar">
                 {exportData}
               </pre>
             </div>
             <div className="flex justify-end gap-2.5 pt-2">
               <button
                 onClick={handleCopy}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1.5 transition-colors"
+                className="px-4 py-2 rounded-lg bg-[#0d0205] hover:bg-red-950/80 text-red-200 text-xs font-medium border border-red-900/80 flex items-center gap-1.5 transition-colors"
               >
                 <Copy className="w-3.5 h-3.5" />
                 {copied ? 'Copied!' : 'Copy to Clipboard'}
               </button>
               <button
                 onClick={handleDownload}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-950/40"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]"
               >
                 <Download className="w-3.5 h-3.5" />
                 Download JSON
@@ -314,8 +314,8 @@ export const ExportImportModal: React.FC<{
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            <p className="text-xs text-slate-300">
+          <div className="flex flex-col gap-3 font-mono">
+            <p className="text-xs text-red-300">
               Paste exported JSON session array below to restore threads:
             </p>
             <textarea
@@ -323,18 +323,18 @@ export const ExportImportModal: React.FC<{
               onChange={e => setImportJson(e.target.value)}
               placeholder='[ { "id": "...", "title": "...", "messages": [...] } ]'
               rows={6}
-              className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-[11px] font-mono text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+              className="w-full p-3 bg-[#050102] border border-red-950/90 rounded-lg text-[11px] font-mono text-red-100 placeholder-red-800/60 focus:outline-none focus:border-red-500 focus:shadow-[0_0_12px_rgba(239,68,68,0.4)] transition-colors resize-none"
             />
             <div className="flex justify-end gap-2.5 pt-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                className="px-4 py-2 rounded-lg bg-[#0d0205] hover:bg-red-950/70 text-red-300 text-xs font-medium border border-red-900/80 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImportSubmit}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-950/40"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)]"
               >
                 <Upload className="w-3.5 h-3.5" />
                 Restore Sessions
@@ -365,32 +365,32 @@ export const Toast: React.FC<{
   const getTheme = () => {
     switch (type) {
       case 'error':
-        return 'border-rose-500/40 bg-[#160b0f] text-rose-200 shadow-rose-950/40';
+        return 'border-rose-600/70 bg-[#140205] text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.4)]';
       case 'warning':
-        return 'border-amber-500/40 bg-[#16120b] text-amber-200 shadow-amber-950/40';
+        return 'border-amber-600/70 bg-[#140a02] text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.4)]';
       case 'info':
-        return 'border-indigo-500/40 bg-[#0d1322] text-indigo-200 shadow-indigo-950/40';
+        return 'border-red-600/70 bg-[#0e0205] text-red-200 shadow-[0_0_15px_rgba(239,68,68,0.4)]';
       default:
-        return 'border-emerald-500/40 bg-[#0b1612] text-emerald-200 shadow-emerald-950/40';
+        return 'border-emerald-600/70 bg-[#03140a] text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.4)]';
     }
   };
 
   return (
-    <div className="fixed top-4 right-4 z-[2100] animate-in slide-in-from-top-2 fade-in duration-200">
+    <div className="fixed top-4 right-4 z-[2100] animate-in slide-in-from-top-2 fade-in duration-200 font-mono">
       <div className={`border rounded-lg px-4 py-3 shadow-xl backdrop-blur-md flex items-center gap-3 text-xs font-medium ${getTheme()}`}>
         {type === 'error' ? (
           <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
         ) : type === 'warning' ? (
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
         ) : type === 'info' ? (
-          <Info className="w-4 h-4 text-indigo-400 shrink-0" />
+          <Info className="w-4 h-4 text-red-400 shrink-0" />
         ) : (
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
         )}
         <span>{message}</span>
         <button
           onClick={onClose}
-          className="ml-2 opacity-60 hover:opacity-100 p-0.5"
+          className="ml-2 opacity-60 hover:opacity-100 p-0.5 text-red-300"
         >
           <X className="w-3.5 h-3.5" />
         </button>

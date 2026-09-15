@@ -14,38 +14,38 @@ const GenerationStatusBar: React.FC<{
   activeToolCalling?: string | null;
   isFree?: boolean;
 }> = ({ model, provider, activeToolCalling, isFree }) => (
-  <div className="mx-4 sm:mx-6 md:mx-8 mb-3 px-4 py-2.5 rounded-xl bg-indigo-950/50 border border-indigo-500/30 shadow-lg shadow-indigo-950/30 flex items-center justify-between text-xs font-mono">
+  <div className="mx-4 sm:mx-6 md:mx-8 mb-3 px-4 py-2.5 rounded-xl bg-red-950/80 border border-red-600/70 shadow-[0_0_20px_rgba(239,68,68,0.35)] flex items-center justify-between text-xs font-mono">
     <div className="flex items-center gap-3 min-w-0">
-      {/* Pulsing dot */}
+      {/* Pulsing red dot */}
       <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-400" />
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_8px_#ef4444]" />
       </span>
 
       {activeToolCalling ? (
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-amber-300 font-semibold">Tool:</span>
+          <span className="text-amber-400 font-bold">TOOL_EXEC:</span>
           <span className="text-amber-200 font-bold truncate">{activeToolCalling}</span>
-          <span className="text-slate-500 animate-pulse">executing...</span>
+          <span className="text-red-400/80 animate-pulse">executing in sandbox...</span>
         </div>
       ) : (
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-slate-400">Generating via</span>
-          <span className="text-indigo-200 font-bold truncate">{model}</span>
-          <span className="text-slate-500">•</span>
-          <span className="text-slate-400">{provider}</span>
+          <span className="text-red-400/80">STREAMING_PAYLOAD &gt;&gt;</span>
+          <span className="text-red-100 font-bold truncate">{model}</span>
+          <span className="text-red-600">•</span>
+          <span className="text-red-300">{provider}</span>
         </div>
       )}
     </div>
 
     <div className="flex items-center gap-2 shrink-0">
       {isFree && (
-        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px]">
-          FREE
+        <span className="px-2 py-0.5 rounded-full bg-red-900/60 text-red-200 border border-red-500/50 text-[10px]">
+          FREE TIER
         </span>
       )}
-      <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 text-[10px] animate-pulse">
-        STREAMING
+      <span className="px-2 py-0.5 rounded-full bg-red-600/30 text-red-200 border border-red-500/60 text-[10px] animate-pulse font-bold shadow-[0_0_8px_rgba(239,68,68,0.4)]">
+        LIVE_STREAM
       </span>
     </div>
   </div>
@@ -58,24 +58,24 @@ const FallbackEventCard: React.FC<{
   reason: string;
   onDismiss: () => void;
 }> = ({ failed, succeeded, reason, onDismiss }) => (
-  <div className="mx-4 sm:mx-6 md:mx-8 mb-3 px-3 py-2.5 rounded-xl bg-amber-950/40 border border-amber-500/25 flex items-center justify-between text-xs font-mono animate-in slide-in-from-bottom duration-300">
+  <div className="mx-4 sm:mx-6 md:mx-8 mb-3 px-3 py-2.5 rounded-xl bg-red-950/60 border border-amber-500/40 flex items-center justify-between text-xs font-mono animate-in slide-in-from-bottom duration-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
     <div className="flex items-center gap-2 min-w-0">
       <ArrowRightLeft className="w-4 h-4 text-amber-400 shrink-0" />
       <div className="min-w-0">
-        <span className="text-amber-300 font-semibold">Auto-Fallback:</span>
+        <span className="text-amber-300 font-semibold">AUTO_FALLBACK_REROUTE:</span>
         <span className="text-slate-400 ml-1.5">
           <span className="text-rose-400 line-through">{failed}</span>
           <span className="text-slate-500 mx-1">→</span>
-          <span className="text-emerald-400">{succeeded}</span>
+          <span className="text-emerald-400 font-bold">{succeeded}</span>
         </span>
-        {reason && <span className="text-slate-500 ml-1.5 truncate">({reason.slice(0, 50)})</span>}
+        {reason && <span className="text-red-400/80 ml-1.5 truncate">({reason.slice(0, 50)})</span>}
       </div>
     </div>
     <button
       type="button"
       onClick={onDismiss}
       aria-label="Dismiss fallback notification"
-      className="text-slate-600 hover:text-slate-400 transition-colors ml-2 shrink-0"
+      className="text-red-400 hover:text-red-200 transition-colors ml-2 shrink-0"
     >
       <XCircle className="w-3.5 h-3.5" />
     </button>
@@ -213,7 +213,7 @@ export const ChatWindow: React.FC<{
   const isFreeModel = lastMessage?.generatedBy?.isFree;
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col relative bg-[#090d16] font-sans">
+    <div className="flex-1 overflow-hidden flex flex-col relative bg-[#050102] font-mono">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -227,30 +227,30 @@ export const ChatWindow: React.FC<{
             <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-in fade-in duration-300">
               {/* Terminal Logo */}
               <div className="mb-6 relative">
-                <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-xl shadow-indigo-950/40">
+                <div className="w-16 h-16 rounded-2xl bg-red-950/50 border-2 border-red-600/80 flex items-center justify-center text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)]">
                   <Terminal className="w-8 h-8" />
                 </div>
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#090d16] flex items-center justify-center">
-                  <Activity className="w-2 h-2 text-white" />
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-[#050102] flex items-center justify-center shadow-[0_0_8px_#ef4444]">
+                  <Activity className="w-2 h-2 text-black stroke-[3]" />
                 </span>
               </div>
 
-              <h2 className="text-2xl font-bold tracking-tight text-slate-100 mb-2">
-                WormGPT Terminal & Model Harness
+              <h2 className="text-2xl font-bold tracking-tight text-red-100 mb-2 drop-shadow-[0_0_12px_rgba(239,68,68,0.7)] font-mono">
+                WORM_OS // RED TERMINAL
               </h2>
-              <p className="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
-                Full whitebox AI — see every model, provider, tool call, and routing decision in real time. Multi-provider fallback, 50+ AI providers.
+              <p className="text-xs text-red-400/80 max-w-md mb-6 leading-relaxed font-mono">
+                Autonomous AI offensive security research & whitebox model harness. 108+ LLM nodes, real-time packet stream telemetry, zero-trace memory wipe.
               </p>
 
               {/* Whitebox Legend */}
               <div className="flex flex-wrap items-center justify-center gap-2 mb-5 text-[11px] font-mono">
-                <span className="px-2 py-1 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300">
+                <span className="px-2.5 py-1 rounded-md bg-red-950/60 border border-red-800/80 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.2)]">
                   [model] shown per message
                 </span>
-                <span className="px-2 py-1 rounded bg-amber-950/40 border border-amber-500/25 text-amber-300">
+                <span className="px-2.5 py-1 rounded-md bg-amber-950/50 border border-amber-500/30 text-amber-300">
                   Tool calls visible
                 </span>
-                <span className="px-2 py-1 rounded bg-emerald-950/40 border border-emerald-500/25 text-emerald-300">
+                <span className="px-2.5 py-1 rounded-md bg-red-900/40 border border-red-600/50 text-red-200">
                   FREE models marked ✓
                 </span>
               </div>
@@ -260,34 +260,34 @@ export const ChatWindow: React.FC<{
                 <button
                   type="button"
                   onClick={() => onOpenModelSelector?.('text')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer hover:border-indigo-500/50 hover:bg-indigo-600/10 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-black/80 border border-red-900/80 text-xs text-red-300 flex items-center gap-1.5 cursor-pointer hover:border-red-500 hover:bg-red-950/40 hover:shadow-[0_0_12px_rgba(239,68,68,0.3)] transition-all font-mono"
                   title="Change the primary text model"
                 >
-                  <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                  <Cpu className="w-3.5 h-3.5 text-red-400" />
                   <span>Text: {settings.model}</span>
-                  <span className="text-slate-500 text-[10px]">({settings.aiProvider})</span>
+                  <span className="text-red-600 text-[10px]">({settings.aiProvider})</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onOpenModelSelector?.('vision')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer hover:border-violet-500/50 hover:bg-violet-600/10 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-black/80 border border-red-900/80 text-xs text-red-300 flex items-center gap-1.5 cursor-pointer hover:border-red-500 hover:bg-red-950/40 hover:shadow-[0_0_12px_rgba(239,68,68,0.3)] transition-all font-mono"
                   title="Change the vision model"
                 >
-                  <Eye className="w-3.5 h-3.5 text-violet-400" />
+                  <Eye className="w-3.5 h-3.5 text-red-400" />
                   <span>Vision: {settings.visionModel || 'gemini-2.5-flash'}</span>
                 </button>
 
                 {settings.autoFallback && (
-                  <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-1.5">
-                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                  <div className="px-3 py-1.5 rounded-lg bg-red-950/60 border border-red-600/40 text-xs text-red-300 flex items-center gap-1.5 font-mono">
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-red-400" />
                     <span>Auto-Fallback ON</span>
                   </div>
                 )}
 
                 {settings.systemOverride && (
-                  <div className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5" />
+                  <div className="px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-500 text-xs text-red-200 flex items-center gap-1.5 font-mono shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                    <ShieldAlert className="w-3.5 h-3.5 text-red-400 animate-pulse" />
                     <span>System Override Active</span>
                   </div>
                 )}
@@ -299,10 +299,10 @@ export const ChatWindow: React.FC<{
                   <button
                     key={i}
                     onClick={() => setInput(p)}
-                    className="p-3.5 bg-slate-900/40 hover:bg-indigo-600/10 border border-slate-800 hover:border-indigo-500/40 rounded-xl text-xs text-slate-300 hover:text-slate-100 transition-all duration-200"
+                    className="p-3.5 bg-black/60 hover:bg-red-950/40 border border-red-900/60 hover:border-red-600 rounded-xl text-xs text-red-300 hover:text-red-100 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-all duration-200 font-mono"
                   >
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <Sparkles className="w-3.5 h-3.5 text-red-400 shrink-0" />
                       <span className="truncate">{p}</span>
                     </div>
                   </button>
@@ -353,11 +353,11 @@ export const ChatWindow: React.FC<{
       {showScrollBottom && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="absolute bottom-6 right-6 p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg shadow-indigo-950/60 hover:scale-105 active:scale-95 transition-all z-20 flex items-center justify-center"
+          className="absolute bottom-6 right-6 p-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-[0_0_18px_rgba(239,68,68,0.55)] border border-red-400 hover:scale-105 active:scale-95 transition-all z-20 flex items-center justify-center"
           title="Scroll to latest message"
           aria-label="Scroll to latest message"
         >
-          <ArrowDown className="w-4 h-4" />
+          <ArrowDown className="w-4 h-4 stroke-[2.5]" />
         </button>
       )}
     </div>

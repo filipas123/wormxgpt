@@ -1,6 +1,8 @@
 import TurndownService from 'turndown';
 import { faker } from '@faker-js/faker';
 import { githubIntegration, gmailIntegration, slackIntegration, discordIntegration, telegramIntegration, googleCalendarIntegration, googleDriveIntegration, trelloIntegration, spotifyIntegration, teamsIntegration, whatsappIntegration, linkedinIntegration, secmailIntegration, autofillIntegration } from './integrations';
+import { resilientJsonParse } from '../utils/resilientJson';
+import { telemetryService } from './telemetry';
 
 export interface ToolCall {
   id: string;
@@ -227,20 +229,10 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
 
 export function validateAndFixToolArgs(name: string, args: any): any {
   if (typeof args === 'string') {
-    try {
-      // Aggressive JSON parsing
-      const cleaned = args
-        .replace(/\\n/g, '\n')
-        .replace(/\\"/g, '"')
-        .trim();
-      return JSON.parse(cleaned);
-    } catch (e) {
-      // Fallback for malformed LLM outputs
-      console.warn(`Tool ${name} args parsing failed, attempting repair...`);
-      return { query: args }; // Default to query if it's just a string
-    }
+    const { data } = resilientJsonParse(args, { query: args });
+    return data;
   }
-  return args;
+  return args || {};
 }
 
 async function translateGoogle(text: string, sl: string, tl: string) {
@@ -7218,23 +7210,60 @@ finally:
     function: { name: 'Calculator', description: 'Evaluate a mathematical expression safely. Supports +, -, *, /, **, %, sqrt, abs, floor, ceil, round, log, sin, cos, tan, PI, E.', parameters: { type: 'object', properties: { expression: { type: 'string', description: 'Math expression to evaluate, e.g. "sqrt(144) + 2**10"' } }, required: ['expression'] } },
     execute: (args: any) => {
       try {
-        // Safe eval: only allow math operations
-        const sanitized = args.expression
-          .replace(/[^0-9+\-*/().%, \t\nsqrtabceilflooroundlogsincotan PI E]/g, '')
-          .replace(/\bsqrt\b/g, 'Math.sqrt')
-          .replace(/\babs\b/g, 'Math.abs')
-          .replace(/\bfloor\b/g, 'Math.floor')
-          .replace(/\bceil\b/g, 'Math.ceil')
-          .replace(/\bround\b/g, 'Math.round')
-          .replace(/\blog\b/g, 'Math.log')
-          .replace(/\bsin\b/g, 'Math.sin')
-          .replace(/\bcos\b/g, 'Math.cos')
-          .replace(/\btan\b/g, 'Math.tan')
-          .replace(/\bPI\b/g, 'Math.PI')
-          .replace(/\bE\b/g, 'Math.E');
-        const result = Function(`"use strict"; return (${sanitized})`)();
-        return `${args.expression} = ${result}`;
-      } catch (e: any) { return `Calculator error: ${e.message}`; }
+        const rawExpr = String(args?.expression || '').trim();
+        if (!rawExpr) return 'Calculator error: Expression cannot be empty.';
+        if (rawExpr.length > 250) return 'Calculator error: Expression exceeds maximum length (250 chars).';
+
+        // 1. Strict lexical inspection: check for illegal characters
+        // Only allow digits, whitespace, arithmetic operators, parentheses, commas, decimal points, and specific word characters
+        if (/[^0-9a-zA-Z_+\-*/%()., \t\n]/.test(rawExpr)) {
+          return 'Calculator error: Illegal characters detected. Only standard mathematical symbols are allowed.';
+        }
+
+        // 2. Strict identifier whitelist
+        const ALLOWED_IDENTIFIERS = new Set([
+          'sqrt', 'cbrt', 'abs', 'floor', 'ceil', 'round', 'trunc',
+          'log', 'log2', 'log10', 'exp',
+          'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+          'pow', 'min', 'max', 'PI', 'E'
+        ]);
+
+        const identifiers = rawExpr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+        for (const id of identifiers) {
+          if (!ALLOWED_IDENTIFIERS.has(id)) {
+            return `Calculator security error: Unauthorized identifier "${id}" is not permitted.`;
+          }
+        }
+
+        // 3. Transform whitelisted math functions to Math.*
+        let sanitized = rawExpr;
+        for (const id of ALLOWED_IDENTIFIERS) {
+          const regex = new RegExp(`\\b${id}\\b`, 'g');
+          sanitized = sanitized.replace(regex, `Math.${id}`);
+        }
+
+        // 4. Double-check transformed string: ensure only safe tokens remain
+        // Valid characters now: digits, operators, parens, decimal, commas, Math.<id>, whitespace
+        const checkPattern = /^[0-9+\-*/%()., \t\n]|Math\.(sqrt|cbrt|abs|floor|ceil|round|trunc|log|log2|log10|exp|sin|cos|tan|asin|acos|atan|pow|min|max|PI|E)/;
+        const testClean = sanitized.replace(/Math\.(sqrt|cbrt|abs|floor|ceil|round|trunc|log|log2|log10|exp|sin|cos|tan|asin|acos|atan|pow|min|max|PI|E)/g, '1');
+        if (/[^0-9+\-*/%()., \t\n]/.test(testClean)) {
+          return 'Calculator security error: Expression failed security validation pass.';
+        }
+
+        // 5. Execute in isolated scope with blocked globals
+        const isolatedRunner = new Function(
+          'window', 'document', 'globalThis', 'global', 'process', 'console', 'eval', 'Function',
+          `"use strict"; return (${sanitized});`
+        );
+        const result = isolatedRunner(null, null, null, null, null, null, null, null);
+
+        if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+          return `${rawExpr} = ${String(result)}`;
+        }
+        return `${rawExpr} = ${Number(result.toFixed(8)).toString()}`;
+      } catch (e: any) { 
+        return `Calculator error: ${e?.message || 'Syntax or evaluation error'}`; 
+      }
     }
   },
 
@@ -7298,6 +7327,78 @@ finally:
     }
   },
 
+  // ── pxpipe / pipex Token Arbitrage Engine ────────────────────────────────────
+  pxpipe: {
+    type: 'function',
+    function: {
+      name: 'pxpipe',
+      description: 'Arbitrage & compress large text, code snippets, logs, or multi-page documentation into ultra-dense visual image frames using pxpipe to reduce token consumption by 60-75%.',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'The long text content or source code to compress' },
+          title: { type: 'string', description: 'Optional header label for the compressed frame' },
+          theme: { type: 'string', description: 'Theme palette: terminal-green, dark-slate, cyber-amber, or clean-light' }
+        },
+        required: ['text']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { pxpipeEngine } = await import('./pxpipe');
+        const textToCompress = args.text || args.content || args.query || '';
+        const res = await pxpipeEngine.renderTextToImage(textToCompress, {
+          title: args.title || 'PXPIPE_COMPRESSION',
+          theme: args.theme || 'terminal-green'
+        });
+        return {
+          status: 'success',
+          tokenSavingsPct: res.stats.tokenSavingsPct,
+          originalChars: res.stats.originalChars,
+          estimatedVisualTokens: res.stats.estimatedVisualTokens,
+          frameCount: res.images?.length || 1,
+          images: res.images,
+          notice: 'Compressed visual tokens ready for vision models'
+        };
+      } catch (err: any) {
+        return { error: `pxpipe compression failed: ${err.message}` };
+      }
+    }
+  },
+
+  pipex: {
+    type: 'function',
+    function: {
+      name: 'pipex',
+      description: 'Alias for pxpipe: High-density token arbitrage engine to compress bulky text into visual image frames.',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'The text content or code to compress' },
+          title: { type: 'string', description: 'Optional title' }
+        },
+        required: ['text']
+      }
+    },
+    execute: async (args: any) => {
+      try {
+        const { pxpipeEngine } = await import('./pxpipe');
+        const textToCompress = args.text || args.content || args.query || '';
+        const res = await pxpipeEngine.renderTextToImage(textToCompress, {
+          title: args.title || 'PIPEX_COMPRESSION'
+        });
+        return {
+          status: 'success',
+          tokenSavingsPct: res.stats.tokenSavingsPct,
+          frameCount: res.images?.length || 1,
+          images: res.images
+        };
+      } catch (err: any) {
+        return { error: `pipex compression failed: ${err.message}` };
+      }
+    }
+  },
+
 };
 // ── Helper: extract links from markdown content ────────────────────────────
 function extractLinksFromMarkdown(md: string): { text: string; url: string }[] {
@@ -7337,21 +7438,60 @@ function generateResearchQueries(topic: string, focus: string, count: number): s
 }
 
 export const getDynamicTools = async (settings: any) => {
-  const enabledNames = settings.enabledTools || [];
+  const enabledNames: string[] = settings?.enabledTools || [];
+  const resolvedToolNames = new Set<string>();
 
-  const localTools = Object.keys(ATTACHED_TOOLS)
-    .filter(name => enabledNames.includes(name))
-    .map(name => {
-      const cloned = JSON.parse(JSON.stringify(ATTACHED_TOOLS[name]));
-      if (cloned.function?.parameters?.properties) {
-        Object.keys(cloned.function.parameters.properties).forEach(k => {
-          if ('default' in cloned.function.parameters.properties[k]) {
-            delete cloned.function.parameters.properties[k].default;
-          }
-        });
-      }
-      return cloned;
+  const ALIAS_MAP: Record<string, string[]> = {
+    google_search: ['GoogleAISearch', 'SearchWeb'],
+    web_scraper: ['WebCrawler', 'SGAISmartScraper'],
+    scrape_web: ['WebCrawler', 'SGAISmartScraper'],
+    parallel_search: ['SearchWeb'],
+    calculator: ['Calculator'],
+    calc: ['Calculator'],
+    pxpipe: ['pxpipe'],
+    pipex: ['pipex', 'pxpipe'],
+    weather: ['GetWeather'],
+    crypto: ['CryptoPrices'],
+    cve: ['chainguard-academy:lookup_cve'],
+    lookup_cve: ['chainguard-academy:lookup_cve'],
+    time: ['GetCurrentDateTime']
+  };
+
+  for (const name of enabledNames) {
+    if (ATTACHED_TOOLS[name]) {
+      resolvedToolNames.add(name);
+      continue;
+    }
+    const norm = name.toLowerCase().replace(/[-_]/g, '');
+    const matched = Object.keys(ATTACHED_TOOLS).find(k => k.toLowerCase().replace(/[-_]/g, '') === norm);
+    if (matched) {
+      resolvedToolNames.add(matched);
+      continue;
+    }
+    const aliases = ALIAS_MAP[name.toLowerCase()] || ALIAS_MAP[norm];
+    if (aliases) {
+      aliases.forEach(a => { if (ATTACHED_TOOLS[a]) resolvedToolNames.add(a); });
+    }
+  }
+
+  // If no tools resolved or enabledTools is empty, provide core baseline tools
+  if (resolvedToolNames.size === 0) {
+    ['SearchWeb', 'WebCrawler', 'GetCurrentDateTime', 'Calculator', 'CryptoPrices', 'GetWeather', 'pxpipe', 'pipex'].forEach(t => {
+      if (ATTACHED_TOOLS[t]) resolvedToolNames.add(t);
     });
+  }
+
+  const localTools = Array.from(resolvedToolNames).map(name => {
+    const cloned = JSON.parse(JSON.stringify(ATTACHED_TOOLS[name]));
+    if (cloned.function?.parameters?.properties) {
+      Object.keys(cloned.function.parameters.properties).forEach(k => {
+        if ('default' in cloned.function.parameters.properties[k]) {
+          delete cloned.function.parameters.properties[k].default;
+        }
+      });
+    }
+    return cloned;
+  });
 
   let mappedMcpTools: any[] = [];
   try {
@@ -7534,110 +7674,253 @@ export const getDynamicTools = async (settings: any) => {
 
 export const executeToolCall = async (toolCall: ToolCall) => {
   const name = toolCall.function.name;
-  let args;
-  try { args = JSON.parse(toolCall.function.arguments); } catch (e) { args = toolCall.function.arguments || {}; }
-
-  // ── Safety Confirmation Check ─────────────────────────────────────────────
-  const SAFE_TOOLS = new Set([
-    'GetCurrentDateTime', 'SearchWeb', 'WebCrawler', 'FetchWebpage',
-    'DNSLookup', 'WhoisLookup', 'IPGeolocation', 'HashGenerator',
-    'Base64Tool', 'JDoodleCompiler', 'TextTranslator', 'GenerateImage',
-    'YouTubeTranscript', 'RedditSearch', 'HackerNewsSearch', 'GetNews',
-    'ArxivSearch', 'CryptoPrices', 'BraveSearch', 'GoogleAISearch',
-    'DuckDuckGoSearch', 'JinaSearch', 'ExaSearch', 'DeepResearch',
-    'search_web', 'fetch_url'
-  ]);
-
-  if (!SAFE_TOOLS.has(name)) {
-    if ((global as any).cliPromptPermission) {
-      const allowed = await (global as any).cliPromptPermission(name, args);
-      if (!allowed) {
-        return JSON.stringify({ error: `Permission denied: User rejected execution of tool ${name}.` });
-      }
-    }
+  const startMs = Date.now();
+  
+  // Resilient parsing of tool arguments
+  let args: any;
+  if (typeof toolCall.function.arguments === 'string') {
+    const { data } = resilientJsonParse(toolCall.function.arguments, { query: toolCall.function.arguments });
+    args = data;
+  } else {
+    args = toolCall.function.arguments || {};
   }
 
-  // ── Chrome MCP tool routing ──────────────────────────────────────────────
-  // Route all chrome_* tools + browser tab tools through the chromeBridge,
-  // making them universally available to any provider/model.
-  const CHROME_TOOL_NAMES = new Set([
-    'chrome_navigate', 'chrome_screenshot', 'chrome_extract_text',
-    'chrome_extract_links', 'chrome_click', 'chrome_fill',
-    'chrome_execute_js', 'chrome_switch_tab', 'chrome_close_tabs',
-    'chrome_history', 'chrome_bookmark_search', 'get_windows_and_tabs'
-  ]);
+  telemetryService.recordToolStart(name, args);
 
-  if (CHROME_TOOL_NAMES.has(name)) {
-    try {
-      const { chromeBridge } = await import('./chrome_mcp_integration');
-      chromeBridge.onTurnStart();
+  // Helper to wrap promise with a strict timeout
+  const withTimeout = <T>(promise: Promise<T>, timeoutMs = 25000): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Tool execution timed out after ${timeoutMs}ms`)), timeoutMs)
+      )
+    ]);
+  };
 
-      let result: any;
-      switch (name) {
-        case 'chrome_navigate':
-          result = await chromeBridge.page_navigate(args.url, args.wait_time);
-          break;
-        case 'chrome_screenshot':
-          result = await chromeBridge.page_screenshot(args.selector);
-          break;
-        case 'chrome_extract_text':
-          result = await chromeBridge.page_extract_text();
-          break;
-        case 'chrome_extract_links':
-          result = await chromeBridge.page_extract_links();
-          break;
-        case 'chrome_click':
-          result = await chromeBridge.page_click(args.selector);
-          break;
-        case 'chrome_fill':
-          result = await chromeBridge.page_fill(args.selector, args.value);
-          break;
-        case 'chrome_execute_js':
-          result = await chromeBridge.page_execute_js(args.script);
-          break;
-        case 'get_windows_and_tabs':
-        case 'chrome_switch_tab':
-        case 'chrome_close_tabs':
-        case 'chrome_history':
-        case 'chrome_bookmark_search': {
-          // These are native Chrome extension APIs — delegate through MCP
-          const { mcpService } = await import('./mcp');
-          result = await mcpService.executeTool(name, args);
-          break;
+  const executeInternal = async (): Promise<string> => {
+    // ── Safety Confirmation Check ─────────────────────────────────────────────
+    const SAFE_TOOLS = new Set([
+      'GetCurrentDateTime', 'SearchWeb', 'WebCrawler', 'FetchWebpage',
+      'DNSLookup', 'WhoisLookup', 'IPGeolocation', 'HashGenerator',
+      'Base64Tool', 'JDoodleCompiler', 'TextTranslator', 'GenerateImage',
+      'YouTubeTranscript', 'RedditSearch', 'HackerNewsSearch', 'GetNews',
+      'ArxivSearch', 'CryptoPrices', 'BraveSearch', 'GoogleAISearch',
+      'DuckDuckGoSearch', 'JinaSearch', 'ExaSearch', 'DeepResearch',
+      'search_web', 'fetch_url', 'Calculator', 'pxpipe', 'pipex'
+    ]);
+
+    if (!SAFE_TOOLS.has(name)) {
+      if ((global as any).cliPromptPermission) {
+        const allowed = await (global as any).cliPromptPermission(name, args);
+        if (!allowed) {
+          return JSON.stringify({ 
+            success: false,
+            errorType: 'permission_denied',
+            error: `Permission denied: User rejected execution of tool ${name}.`,
+            tool: name
+          });
         }
-        default:
-          throw new Error(`Unhandled chrome tool: ${name}`);
       }
-      return typeof result === 'string' ? result : JSON.stringify(result);
+    }
+
+    // ── Chrome MCP tool routing ──────────────────────────────────────────────
+    const CHROME_TOOL_NAMES = new Set([
+      'chrome_navigate', 'chrome_screenshot', 'chrome_extract_text',
+      'chrome_extract_links', 'chrome_click', 'chrome_fill',
+      'chrome_execute_js', 'chrome_switch_tab', 'chrome_close_tabs',
+      'chrome_history', 'chrome_bookmark_search', 'get_windows_and_tabs'
+    ]);
+
+    if (CHROME_TOOL_NAMES.has(name)) {
+      try {
+        const { chromeBridge } = await import('./chrome_mcp_integration');
+        chromeBridge.onTurnStart();
+
+        let result: any;
+        switch (name) {
+          case 'chrome_navigate':
+            result = await chromeBridge.page_navigate(args.url, args.wait_time);
+            break;
+          case 'chrome_screenshot':
+            result = await chromeBridge.page_screenshot(args.selector);
+            break;
+          case 'chrome_extract_text':
+            result = await chromeBridge.page_extract_text();
+            break;
+          case 'chrome_extract_links':
+            result = await chromeBridge.page_extract_links();
+            break;
+          case 'chrome_click':
+            result = await chromeBridge.page_click(args.selector);
+            break;
+          case 'chrome_fill':
+            result = await chromeBridge.page_fill(args.selector, args.value);
+            break;
+          case 'chrome_execute_js':
+            result = await chromeBridge.page_execute_js(args.script);
+            break;
+          case 'get_windows_and_tabs':
+          case 'chrome_switch_tab':
+          case 'chrome_close_tabs':
+          case 'chrome_history':
+          case 'chrome_bookmark_search': {
+            const { mcpService } = await import('./mcp');
+            result = await mcpService.executeTool(name, args);
+            break;
+          }
+          default:
+            throw new Error(`Unhandled chrome tool: ${name}`);
+        }
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      } catch (e: any) {
+        return JSON.stringify({ 
+          success: false,
+          errorType: 'chrome_mcp_error',
+          error: `Chrome MCP error: ${e.message}`, 
+          tool: name 
+        });
+      }
+    }
+
+    // ── 1. Direct Static Tool Lookup ──────────────────────────────────────────
+    if (ATTACHED_TOOLS[name]) {
+      try {
+        const result = await withTimeout(Promise.resolve(ATTACHED_TOOLS[name].execute(args)));
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      } catch (err: any) {
+        return JSON.stringify({ 
+          success: false,
+          errorType: err.message?.includes('timed out') ? 'timeout' : 'execution_failure',
+          error: `Tool ${name} failed: ${err.message}`,
+          tool: name
+        });
+      }
+    }
+
+    // ── 2. Normalized & Alias Tool Lookup ────────────────────────────────────
+    const normTarget = name.toLowerCase().replace(/[-_]/g, '');
+    for (const key of Object.keys(ATTACHED_TOOLS)) {
+      if (key.toLowerCase().replace(/[-_]/g, '') === normTarget) {
+        try {
+          const result = await withTimeout(Promise.resolve(ATTACHED_TOOLS[key].execute(args)));
+          return typeof result === 'string' ? result : JSON.stringify(result);
+        } catch (err: any) {
+          return JSON.stringify({ 
+            success: false,
+            errorType: err.message?.includes('timed out') ? 'timeout' : 'execution_failure',
+            error: `Tool ${key} failed: ${err.message}`,
+            tool: key
+          });
+        }
+      }
+    }
+
+    // Common tool alias mapping
+    const ALIAS_MAP: Record<string, string> = {
+      google_search: 'SearchWeb',
+      googlesearch: 'SearchWeb',
+      search: 'SearchWeb',
+      search_web: 'SearchWeb',
+      web_scraper: 'WebCrawler',
+      webscraper: 'WebCrawler',
+      scrape_web: 'WebCrawler',
+      parallel_search: 'SearchWeb',
+      calculator: 'Calculator',
+      calc: 'Calculator',
+      cve: 'chainguard-academy:lookup_cve',
+      lookup_cve: 'chainguard-academy:lookup_cve',
+      pxpipe: 'pxpipe',
+      pipex: 'pxpipe',
+      weather: 'GetWeather',
+      crypto: 'CryptoPrices',
+      time: 'GetCurrentDateTime',
+      datetime: 'GetCurrentDateTime'
+    };
+
+    const resolvedAlias = ALIAS_MAP[name.toLowerCase()] || ALIAS_MAP[normTarget];
+    if (resolvedAlias && ATTACHED_TOOLS[resolvedAlias]) {
+      try {
+        const result = await withTimeout(Promise.resolve(ATTACHED_TOOLS[resolvedAlias].execute(args)));
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      } catch (err: any) {
+        return JSON.stringify({ 
+          success: false,
+          errorType: err.message?.includes('timed out') ? 'timeout' : 'execution_failure',
+          error: `Tool ${resolvedAlias} failed: ${err.message}`,
+          tool: resolvedAlias
+        });
+      }
+    }
+
+    // ── 3. Remote Arsenal MCP Registry Execution ──────────────────────────────
+    try {
+      const { mcpRegistry } = await import('./mcp/registry');
+      const res = await withTimeout(mcpRegistry.executeArsenalTool(name, args));
+      if (res && res.result !== undefined) {
+        return typeof res.result === 'string' ? res.result : JSON.stringify(res.result);
+      }
     } catch (e: any) {
-      return JSON.stringify({ error: `Chrome MCP error: ${e.message}`, tool: name });
+      // Continue to next fallback
     }
-  }
 
-  // ── Static tool lookup ───────────────────────────────────────────────────
-  const tool = ATTACHED_TOOLS[name];
-  if (tool) {
-    const result = await tool.execute(args);
-    return typeof result === 'string' ? result : JSON.stringify(result);
-  }
+    // ── 4. MCP Server Client Fallback ─────────────────────────────────────────
+    try {
+      const { mcpService } = await import('./mcp');
+      if (mcpService.isConnected) {
+        const result = await withTimeout(mcpService.executeTool(name, args));
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      }
+    } catch (e: any) {
+      if (!e.message?.includes('not found in any connected MCP server')) {
+        return JSON.stringify({ 
+          success: false,
+          errorType: 'mcp_error',
+          error: `MCP Tool Error: ${e.message}`,
+          tool: name
+        });
+      }
+    }
 
-  // ── MCP server fallback ──────────────────────────────────────────────────
+    // ── 5. Smart Heuristic Fallback ──────────────────────────────────────────
+    if (normTarget.includes('search') || normTarget.includes('google')) {
+      try {
+        const result = await withTimeout(Promise.resolve(ATTACHED_TOOLS['SearchWeb'].execute({ query: args.query || args.q || JSON.stringify(args) })));
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      } catch {}
+    }
+    if (normTarget.includes('crawl') || normTarget.includes('scrape')) {
+      try {
+        const result = await withTimeout(Promise.resolve(ATTACHED_TOOLS['WebCrawler'].execute({ url: args.url || args.target || args.query })));
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      } catch {}
+    }
+
+    return JSON.stringify({ 
+      success: false,
+      errorType: 'tool_not_found',
+      error: `Tool "${name}" could not be located in attached tools or MCP registry.`,
+      tool: name
+    });
+  };
+
   try {
-    const { mcpService } = await import('./mcp');
-    if (mcpService.isConnected) {
-      // executeTool throws if tool is not found, or if execution fails
-      const result = await mcpService.executeTool(name, args);
-      return typeof result === 'string' ? result : JSON.stringify(result);
-    }
-  } catch (e: any) {
-    if (e.message && e.message.includes('not found in any connected MCP server')) {
-      // This means the tool wasn't an MCP tool, allow it to fall through to the final "Tool not found"
-    } else {
-      throw new Error(`MCP Tool Error: ${e.message}`);
-    }
+    const rawResult = await executeInternal();
+    const durationMs = Date.now() - startMs;
+    const isError = rawResult.includes('"success":false') || rawResult.includes('"error":');
+    telemetryService.recordToolResult(name, durationMs, isError, rawResult.slice(0, 100));
+    return rawResult;
+  } catch (fatalErr: any) {
+    const durationMs = Date.now() - startMs;
+    const errMessage = fatalErr?.message || 'Unknown tool execution error';
+    telemetryService.recordToolResult(name, durationMs, true, errMessage);
+    return JSON.stringify({
+      success: false,
+      errorType: 'unhandled_exception',
+      error: `Execution crashed: ${errMessage}`,
+      tool: name,
+      durationMs
+    });
   }
-
-  throw new Error(`Tool not found: ${name}`);
 };
 
 export const executeToolByName = async (name: string, args: any = {}) => {

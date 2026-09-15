@@ -8,6 +8,8 @@ import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import { ModelSelectorModal } from './components/ModelSelectorModal';
 import { ActiveArsenalModal } from './components/ActiveArsenalModal';
 import { ConfirmModal, ExportImportModal, Toast, AlertModal } from './components/Modals';
+import { NetworkTelemetryOverlay } from './components/NetworkTelemetryOverlay';
+import { PanicPurgeModal } from './components/PanicPurgeModal';
 import { SETTINGS_KEY, SESSIONS_KEY } from './constants';
 
 const WormGPTApp: React.FC = () => {
@@ -18,13 +20,16 @@ const WormGPTApp: React.FC = () => {
     activeSession, sessions, setSessions,
     settings, setSettings,
     activeSessionId, setActiveSessionId,
-    clearSessionBuffer, deleteSession, purgeAllSessions
+    clearSessionBuffer, deleteSession, purgeAllSessions,
+    handleAbort
   } = useWormGPT();
 
   // Custom Modal States (Replacing all window.alert and window.confirm)
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
   const [modelSelectorTarget, setModelSelectorTarget] = useState<'text' | 'vision'>('text');
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
+  const [isPanicPurgeOpen, setIsPanicPurgeOpen] = useState(false);
   
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
@@ -85,7 +90,10 @@ const WormGPTApp: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#090d16] text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#050102] text-red-100 font-mono overflow-hidden relative">
+      {/* Subtle CRT scanline overlay */}
+      <div className="absolute inset-0 crt-grid-overlay pointer-events-none z-30 opacity-40"></div>
+
       {/* Collapsible Sidebar */}
       <Sidebar 
         onNewSession={handleNewSession}
@@ -95,11 +103,12 @@ const WormGPTApp: React.FC = () => {
         }}
         onClear={() => setConfirmClearOpen(true)}
         onHardReset={() => setConfirmResetOpen(true)}
+        onPanicPurge={() => setIsPanicPurgeOpen(true)}
         onExport={() => setIsExportOpen(true)}
       />
 
       {/* Main Workspace Area */}
-      <main className={`flex-1 flex flex-col transition-all duration-300 h-full relative ${
+      <main className={`flex-1 flex flex-col transition-all duration-300 h-full relative z-10 ${
         isSidebarOpen ? 'ml-16 sm:ml-72' : 'ml-16'
       }`}>
         <Header 
@@ -107,9 +116,12 @@ const WormGPTApp: React.FC = () => {
           onNewSession={handleNewSession}
           activeAgentStatus={null}
           onOpenModelSelector={handleOpenModelSelector}
+          onToggleTelemetry={() => setIsTelemetryOpen(prev => !prev)}
+          isTelemetryOpen={isTelemetryOpen}
+          onOpenPanicModal={() => setIsPanicPurgeOpen(true)}
         />
 
-        <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden relative bg-[#050102]">
           <ChatWindow onOpenModelSelector={handleOpenModelSelector} />
           <InputBar 
             suggestions={[
@@ -179,6 +191,23 @@ const WormGPTApp: React.FC = () => {
           message={alertInfo.message}
           type={alertInfo.type}
           onClose={() => setAlertInfo(prev => ({ ...prev, open: false }))}
+        />
+
+        {/* Real-Time Network Activity Stream Overlay */}
+        <NetworkTelemetryOverlay 
+          isOpen={isTelemetryOpen}
+          onClose={() => setIsTelemetryOpen(false)}
+        />
+
+        {/* Rapid Session Purge / Panic Modal */}
+        <PanicPurgeModal 
+          isOpen={isPanicPurgeOpen}
+          onClose={() => setIsPanicPurgeOpen(false)}
+          onPurgeComplete={() => {
+            setIsPanicPurgeOpen(false);
+            window.location.reload();
+          }}
+          onAbortCurrentStream={handleAbort}
         />
 
         {/* Toast Feedback */}

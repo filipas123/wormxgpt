@@ -1,5 +1,6 @@
 import { AppSettings, Message, ProviderType, StreamChunk, ProviderHealthStats } from '../types';
 import { FALLBACK_CHAIN, FREE_MODEL_DEFAULTS, FREE_PROVIDERS, FREE_TIER_PROVIDERS } from '../constants';
+import { telemetryService } from './telemetry';
 
 // ── Provider Service Interface ───────────────────────────────────────────────
 export interface ProviderService {
@@ -282,6 +283,10 @@ export class ProviderRouter {
         lastErrorMsg = err?.message || 'Unknown error';
         this.recordFailure(provider, lastErrorMsg);
         console.warn(`[ProviderRouter] ${provider} failed: ${lastErrorMsg}`);
+        const nextProvider = chain[i + 1]?.provider;
+        if (nextProvider) {
+          telemetryService.recordFallback(provider, nextProvider, lastErrorMsg);
+        }
       }
     }
 

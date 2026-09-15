@@ -2,10 +2,13 @@ import { AppSettings, Message, StreamChunk, ToolInvocation } from '../types';
 import { providerRouter } from './providerRouter';
 import { mcpRegistry } from './mcp/registry';
 import { executeToolByName } from './tools';
+import { parseToolCallsFromText, stripToolCallsFromText } from '../utils/toolAwareness';
+import { pxpipeEngine } from './pxpipe';
+import { telemetryService } from './telemetry';
 
 /**
- * ChatService: Synchronous Request-Response service executing completions
- * across all configured providers, with live Tool Invocations and MCP responses.
+ * ChatService: Autonomous Agentic service executing completions across all
+ * configured providers with ReAct multi-turn live tool invocations and pxpipe token arbitrage.
  */
 export class ChatService {
   /**
@@ -27,6 +30,43 @@ export class ChatService {
     const toolInvocations: ToolInvocation[] = [];
     const augmentedMessages = [...messages];
 
+    // 0. pxpipe / pipex explicit command: /pipex <text> or /pxpipe <text>
+    if (text.startsWith('/pipex') || text.startsWith('/pxpipe')) {
+      const match = text.match(/^\/(pipex|pxpipe)(?:\s+([\s\S]*))?$/i);
+      const rawContent = match && match[2] ? match[2].trim() : '';
+      if (rawContent) {
+        onToolStart?.('pxpipe');
+        try {
+          const comp = await pxpipeEngine.renderTextToImage(rawContent, {
+            title: 'PIPEX_COMMAND_ARBITRAGE',
+            theme: 'terminal-green'
+          });
+          const newImages = comp.images?.length > 0 ? comp.images : [comp.dataUrl];
+          augmentedMessages[augmentedMessages.length - 1] = {
+            ...lastMsg,
+            content: `[PXPIPE ARBITRAGE ATTACHED // SAVED ${comp.stats.tokenSavingsPct}% TOKENS]\nAnalyze the attached visual context and answer thoroughly.`,
+            images: [...(lastMsg.images || []), ...newImages]
+          };
+          toolInvocations.push({
+            state: 'result',
+            toolCallId: `call_${Date.now()}_pxpipe`,
+            toolName: 'pxpipe',
+            args: { text: rawContent },
+            result: {
+              status: 'compressed',
+              tokenSavingsPct: comp.stats.tokenSavingsPct,
+              frames: newImages.length
+            }
+          });
+        } catch (err: any) {
+          console.error('[chatService] pxpipe command compression error:', err);
+        } finally {
+          onToolEnd?.('pxpipe');
+        }
+        return { toolInvocations, augmentedMessages };
+      }
+    }
+
     // 1. Explicit tool command check: e.g. /search query, /deepwiki query, /tool:cve query
     let toolToRun: string | null = null;
     let toolArgs: Record<string, any> = {};
@@ -35,17 +75,17 @@ export class ChatService {
       'search', 'google_search', 'parallel_search', 'web_scraper', 'scrape_web',
       'deepwiki', 'read_wiki_structure', 'search_docs', 'lookup_cve', 'cve',
       'cryptoprices', 'crypto', 'calculator', 'calc', 'weather', 'dns_lookup',
-      'port_scan', 'shodan_search', 'whois'
+      'port_scan', 'shodan_search', 'whois', 'pxpipe', 'pipex'
     ]);
 
     if (text.startsWith('/')) {
-      const match = text.match(/^\/([a-zA-Z0-9_-]+)(?:\s+(.*))?$/s);
+      const match = text.match(/^\/([a-zA-Z0-9_-]+)(?:\s+([\s\S]*))?$/s);
       if (match) {
         const cmd = match[1].toLowerCase();
         const rest = (match[2] || '').trim();
         if (KNOWN_EXPLICIT_TOOLS.has(cmd) || cmd.startsWith('tool:') || cmd.startsWith('mcp:')) {
           toolToRun = cmd.replace(/^(tool|mcp):/, '');
-          toolArgs = { query: rest, input: rest };
+          toolArgs = { query: rest, input: rest, text: rest };
         }
       }
     } else {
@@ -110,7 +150,7 @@ export class ChatService {
   }
 
   /**
-   * Synchronously generate chat completion for user messages.
+   * Synchronously generate chat completion with Autonomous Multi-turn Tool ReAct Loop.
    * onChunk receives incremental stream chunks for live UI rendering.
    */
   public async generateChatResponse(
@@ -121,19 +161,148 @@ export class ChatService {
     onToolEnd?: (toolName: string) => void,
     onChunk?: (chunk: StreamChunk) => void
   ): Promise<StreamChunk> {
-    const { toolInvocations, augmentedMessages } = await this.executeApplicableTools(
-      settings,
-      messages,
-      signal,
-      onToolStart,
-      onToolEnd
-    );
-    const response = await providerRouter.generateWithFallback(settings, augmentedMessages, signal, { onChunk });
-    
-    return {
-      ...response,
-      toolInvocations: toolInvocations.length > 0 ? toolInvocations : response.toolInvocations
-    };
+    const provider = settings.aiProvider || 'pollinations';
+    const model = settings.model || 'openai';
+    const estimatedInputTokens = messages.reduce((acc, m) => acc + Math.round((m.content?.length || 0) / 4), 0);
+    telemetryService.recordRequestStart(provider, model, estimatedInputTokens);
+
+    try {
+      const { toolInvocations: preInvocations, augmentedMessages } = await this.executeApplicableTools(
+        settings,
+        messages,
+        signal,
+        onToolStart,
+        onToolEnd
+      );
+
+      const MAX_TOOL_TURNS = 5;
+      const loopMessages = [...augmentedMessages];
+      const accumulatedInvocations: ToolInvocation[] = [...preInvocations];
+      const executedCallSignatures = new Set<string>();
+      let finalChunk: StreamChunk = { text: '', images: [] };
+
+      for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+        if (signal?.aborted) {
+          telemetryService.recordError(provider, 'Request aborted by user');
+          throw new Error('Request aborted by user');
+        }
+
+        let lastTextLen = 0;
+        const response = await providerRouter.generateWithFallback(
+          settings,
+          loopMessages,
+          signal,
+          {
+            onChunk: (chunk: StreamChunk) => {
+              finalChunk = chunk;
+              if (chunk.text && chunk.text.length > lastTextLen) {
+                const delta = chunk.text.slice(lastTextLen);
+                lastTextLen = chunk.text.length;
+                telemetryService.recordChunk(delta, lastTextLen);
+              }
+              onChunk?.(chunk);
+            }
+          }
+        );
+
+        finalChunk = response;
+        if (response.toolInvocations && response.toolInvocations.length > 0) {
+          accumulatedInvocations.push(...response.toolInvocations);
+        }
+
+        // Check if model emitted any tool calls in its text output
+        const rawText = response.text || '';
+        const detectedCalls = parseToolCallsFromText(rawText);
+
+        // Filter out calls that have already been executed with identical arguments to prevent infinite loops
+        const unexecutedCalls = detectedCalls.filter(call => {
+          const sig = `${call.name}::${JSON.stringify(call.args || {})}`;
+          if (executedCallSignatures.has(sig)) return false;
+          executedCallSignatures.add(sig);
+          return true;
+        });
+
+        // If no new tool calls in text, we have reached the final answer!
+        if (unexecutedCalls.length === 0) {
+          telemetryService.recordRequestEnd(Math.round((response.text?.length || 0) / 4));
+          return {
+            ...response,
+            text: stripToolCallsFromText(response.text || ''),
+            toolInvocations: accumulatedInvocations.length > 0 ? accumulatedInvocations : response.toolInvocations
+          };
+        }
+
+        // Execute detected tool calls
+        const executedResults: Array<{ name: string; args: any; result: any; isError: boolean }> = [];
+        for (const call of unexecutedCalls) {
+          if (signal?.aborted) {
+            telemetryService.recordError(provider, 'Request aborted by user');
+            throw new Error('Request aborted by user');
+          }
+          onToolStart?.(call.name);
+          const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+          let toolResult: any;
+          let isError = false;
+          try {
+            toolResult = await executeToolByName(call.name, call.args);
+            if (typeof toolResult === 'string' && (toolResult.includes('"success":false') || toolResult.includes('"error":'))) {
+              isError = true;
+            }
+          } catch (err: any) {
+            isError = true;
+            toolResult = { error: err.message || 'Tool execution error' };
+          } finally {
+            onToolEnd?.(call.name);
+          }
+
+          accumulatedInvocations.push({
+            state: 'result',
+            toolCallId: callId,
+            toolName: call.name,
+            args: call.args,
+            result: toolResult
+          });
+
+          executedResults.push({ name: call.name, args: call.args, result: toolResult, isError });
+        }
+
+        // Push intermediate assistant response
+        const cleanAssistantText = stripToolCallsFromText(rawText);
+        loopMessages.push({
+          role: 'assistant',
+          content: cleanAssistantText ? `${cleanAssistantText}\n\n[Called tool: ${executedResults.map(r => r.name).join(', ')}]` : `[Invoked tool: ${executedResults.map(r => r.name).join(', ')}]`,
+          timestamp: Date.now()
+        });
+
+        // Push structured tool execution results as factual evidence for next reasoning turn
+        const formattedEvidence = executedResults.map(r => {
+          const resStr = typeof r.result === 'string' ? r.result : JSON.stringify(r.result, null, 2);
+          if (r.isError) {
+            return `=== TOOL EXECUTION NOTICE FOR "${r.name}" ===\nStatus: Error encountered\nDetails: ${resStr}\nGuidance: If needed, try an alternative parameter or formulate answer with remaining knowledge.`;
+          }
+          return `=== TOOL RESULT FOR "${r.name}" ===\nArguments: ${JSON.stringify(r.args)}\nOutput:\n${resStr}`;
+        }).join('\n\n');
+
+        loopMessages.push({
+          role: 'user',
+          content: `[LIVE TOOL EXECUTION RESULTS RECEIVED]:\n${formattedEvidence}\n\nNow, incorporate the above real-time findings into your answer for the user. Answer comprehensively. Do not repeat tool calls unless further data is required.`,
+          timestamp: Date.now()
+        });
+      }
+
+      telemetryService.recordRequestEnd(Math.round((finalChunk.text?.length || 0) / 4));
+      return {
+        ...finalChunk,
+        text: stripToolCallsFromText(finalChunk.text || ''),
+        toolInvocations: accumulatedInvocations
+      };
+    } catch (err: any) {
+      if (err?.name !== 'AbortError' && !signal?.aborted) {
+        telemetryService.recordError(provider, err?.message || 'Generation failed');
+      }
+      throw err;
+    }
   }
 
   /**
@@ -164,3 +333,4 @@ export class ChatService {
 
 export const chatService = new ChatService();
 export default chatService;
+

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, Settings, Download, Trash2, ChevronLeft, ChevronRight, 
-  MessageSquare, Search, Terminal, ShieldAlert
+  MessageSquare, Search, Terminal, ShieldAlert, ZapOff
 } from 'lucide-react';
 import { useWormGPT } from '../../context/GlobalContext';
 
@@ -13,6 +13,7 @@ export interface SidebarProps {
   onDeleteSession?: (id: string) => void;
   onClear?: () => void;
   onHardReset?: () => void;
+  onPanicPurge?: () => void;
   onExport?: () => void;
 }
 
@@ -23,6 +24,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewSession: propOnNewSession,
   onDeleteSession,
   onClear,
+  onHardReset,
+  onPanicPurge,
   onExport
 }) => {
   // Track viewport to switch between overlay drawer (mobile) and push layout (desktop)
@@ -104,28 +107,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
       <aside
       aria-label="Session list sidebar"
-      className={`fixed inset-y-0 left-0 z-50 bg-[#0d1322]/95 backdrop-blur-xl border-r border-indigo-950/40 flex flex-col transition-all duration-300 ease-in-out ${
+      className={`fixed inset-y-0 left-0 z-50 bg-[#080204]/95 backdrop-blur-xl border-r border-red-950/80 flex flex-col transition-all duration-300 ease-in-out ${
         isSidebarOpen ? 'w-64 sm:w-72' : 'w-16'
-      } shadow-2xl shadow-black/60 font-sans select-none`
-    }>
+      } shadow-[5px_0_30px_rgba(239,68,68,0.15)] font-mono select-none`}
+    >
       {/* Brand Header */}
-      <div className="p-3.5 border-b border-indigo-950/50 flex items-center justify-between h-16 shrink-0 bg-[#090d16]/80">
+      <div className="p-3.5 border-b border-red-950/80 flex items-center justify-between h-16 shrink-0 bg-black/80">
         {isSidebarOpen ? (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-red-950/60 border border-red-600/60 flex items-center justify-center text-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)] shrink-0">
               <Terminal className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xs font-mono font-bold tracking-tight text-slate-100 truncate">WormGPT Terminal</h1>
+              <h1 className="text-xs font-mono font-bold tracking-tight text-red-100 truncate drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">WormGPT Terminal</h1>
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[10px] text-slate-400 font-mono">v4.7 HARNESS</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_#ef4444]"></span>
+                <span className="text-[10px] text-red-400/80 font-mono">v4.7 RED_HARNESS</span>
               </div>
             </div>
           </div>
         ) : (
           <div className="w-full flex justify-center">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+            <div className="w-8 h-8 rounded-lg bg-red-950/60 border border-red-600/60 flex items-center justify-center text-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)]">
               <Terminal className="w-4 h-4" />
             </div>
           </div>
@@ -135,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+            className="p-1.5 rounded-lg text-red-400 hover:text-red-100 hover:bg-red-950/60 border border-transparent hover:border-red-900/60 transition-colors"
             title="Collapse Sidebar"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -144,15 +147,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Action Header: + NEW SESSION & Search Filter */}
-      <div className="p-3 border-b border-indigo-950/40 space-y-2 shrink-0">
+      <div className="p-3 border-b border-red-950/70 space-y-2 shrink-0">
         <button
           onClick={handleNew}
-          className={`w-full py-2 px-3 text-xs font-mono font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-2 ${
+          className={`w-full py-2 px-3 text-xs font-mono font-bold tracking-wider rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all shadow-[0_0_18px_rgba(239,68,68,0.45)] border border-red-400 flex items-center justify-center gap-2 ${
             !isSidebarOpen ? 'px-0' : ''
           }`}
           title="New Session"
         >
-          <Plus className="w-4 h-4 shrink-0" />
+          <Plus className="w-4 h-4 shrink-0 stroke-[2.5]" />
           {isSidebarOpen && <span>+ NEW SESSION</span>}
         </button>
 
@@ -162,19 +165,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search sessions or date..."
-              className="w-full bg-[#070b12] border border-indigo-950/60 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono"
+              placeholder="Search sessions..."
+              className="w-full bg-black/80 border border-red-950/80 rounded-md px-2.5 py-1.5 text-xs text-red-100 placeholder-red-800/80 focus:outline-none focus:border-red-500 focus:shadow-[0_0_10px_rgba(239,68,68,0.35)] font-mono"
             />
             {searchTerm ? (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2 top-1.5 text-zinc-500 hover:text-zinc-300 text-xs font-mono px-1"
+                className="absolute right-2 top-1.5 text-red-400 hover:text-red-200 text-xs font-mono px-1"
                 title="Clear filter"
               >
                 ×
               </button>
             ) : (
-              <Search className="w-3 h-3 text-zinc-600 absolute right-2.5 top-2.5 pointer-events-none" />
+              <Search className="w-3 h-3 text-red-700 absolute right-2.5 top-2.5 pointer-events-none" />
             )}
           </div>
         )}
@@ -182,9 +185,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* System Override status indicator in sidebar */}
       {isSidebarOpen && settings.systemOverride && (
-        <div className="mx-3 my-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-amber-300 text-[11px] font-medium shrink-0">
-          <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">System Override Active</span>
+        <div className="mx-3 my-1.5 p-2 rounded-lg bg-red-950/50 border border-red-500/50 flex items-center gap-2 text-red-300 text-[11px] font-medium shrink-0 shadow-[0_0_10px_rgba(239,68,68,0.25)]">
+          <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-red-400 animate-pulse" />
+          <span className="truncate font-semibold tracking-wide">System Override Active</span>
         </div>
       )}
 
@@ -205,19 +208,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => handleSelectSession(session.id)}
                 className={`group relative w-full text-left p-2 rounded-md transition-all text-xs font-mono flex items-center gap-2 cursor-pointer ${
                   isActive
-                    ? 'bg-indigo-950/50 text-indigo-200 border border-indigo-800/40 shadow-sm'
-                    : 'text-zinc-400 hover:bg-[#070b12] hover:text-zinc-200 border border-transparent'
+                    ? 'bg-red-950/70 text-red-100 border border-red-600/70 shadow-[0_0_12px_rgba(239,68,68,0.3)]'
+                    : 'text-red-400/80 hover:bg-red-950/40 hover:text-red-100 border border-transparent hover:border-red-900/50'
                 }`}
                 title={session.title}
               >
-                <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-indigo-400' : 'text-zinc-600'}`} />
+                <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-red-400' : 'text-red-700'}`} />
 
                 {isSidebarOpen && (
                   <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                     <span className="truncate font-medium text-xs">
                       {session.title || 'Untitled Session'}
                     </span>
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-[10px] text-red-700">
                       {new Date(session.updatedAt).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
@@ -239,7 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onDeleteSession(session.id);
                         }}
                         aria-label="Confirm delete session"
-                        className="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold transition-colors"
+                        className="px-1.5 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold transition-colors shadow-[0_0_8px_rgba(239,68,68,0.5)]"
                         title="Confirm delete"
                       >
                         Delete
@@ -248,7 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         type="button"
                         onClick={() => setPendingDeleteId(null)}
                         aria-label="Cancel delete"
-                        className="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] font-bold transition-colors"
+                        className="px-1.5 py-0.5 rounded bg-black border border-red-900 text-red-300 text-[10px] font-bold transition-colors"
                         title="Cancel"
                       >
                         Keep
@@ -266,7 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         }, 5000);
                       }}
                       aria-label={`Delete session: ${session.title || 'Untitled'}`}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 rounded transition-all shrink-0"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-red-600 hover:text-red-400 rounded transition-all shrink-0"
                       title="Delete Session"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -280,11 +283,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Controls */}
-      <div className="p-3 border-t border-indigo-950/40 bg-slate-950/40 space-y-1 shrink-0 font-mono text-xs">
+      <div className="p-3 border-t border-red-950/70 bg-black/80 space-y-1 shrink-0 font-mono text-xs">
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="w-full flex justify-center p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors"
+            className="w-full flex justify-center p-2 rounded-lg text-red-400 hover:text-red-100 hover:bg-red-950/60 transition-colors"
             title="Expand Sidebar"
           >
             <ChevronRight className="w-4 h-4" />
@@ -294,7 +297,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onExport && (
           <button
             onClick={onExport}
-            className={`w-full flex items-center gap-2 p-2 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-[#070b12] transition-colors ${
+            className={`w-full flex items-center gap-2 p-2 rounded-md text-red-400 hover:text-red-100 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition-colors ${
               !isSidebarOpen ? 'justify-center' : ''
             }`}
             title="Export Conversation Logs"
@@ -307,19 +310,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onClear && (
           <button
             onClick={onClear}
-            className={`w-full flex items-center gap-2 p-2 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-[#070b12] transition-colors ${
+            className={`w-full flex items-center gap-2 p-2 rounded-md text-red-400 hover:text-red-100 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition-colors ${
               !isSidebarOpen ? 'justify-center' : ''
             }`}
             title="Clear Current Chat"
           >
-            <Trash2 className="w-3.5 h-3.5 shrink-0 text-rose-400/70" />
+            <Trash2 className="w-3.5 h-3.5 shrink-0 text-red-500" />
             {isSidebarOpen && <span>Clear Chat</span>}
+          </button>
+        )}
+
+        {onPanicPurge && (
+          <button
+            onClick={onPanicPurge}
+            className={`w-full flex items-center gap-2 p-2 rounded-md bg-red-950/60 border border-red-600/70 text-red-200 hover:bg-red-900/70 hover:text-white shadow-[0_0_12px_rgba(239,68,68,0.35)] transition-all ${
+              !isSidebarOpen ? 'justify-center' : ''
+            }`}
+            title="Emergency Panic Purge (Zero-Trace Wipe)"
+          >
+            <ZapOff className="w-3.5 h-3.5 shrink-0 text-red-400 animate-pulse" />
+            {isSidebarOpen && <span className="font-bold tracking-wider text-red-100">PANIC PURGE</span>}
           </button>
         )}
 
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className={`w-full flex items-center gap-2 p-2 rounded-md text-zinc-400 hover:text-indigo-400 hover:bg-[#070b12] transition-colors ${
+          className={`w-full flex items-center gap-2 p-2 rounded-md text-red-400 hover:text-red-100 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition-colors ${
             !isSidebarOpen ? 'justify-center' : ''
           }`}
           title="Console & System Settings"

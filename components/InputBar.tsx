@@ -332,7 +332,7 @@ export const InputBar: React.FC<{
   const showPxpipeSuggestion = input.length > 300 || settings.pxpipeEnabled;
 
   return (
-    <div className="p-3 sm:p-4 bg-[#080c16] border-t border-slate-800/80 relative z-40">
+    <div className="p-3 sm:p-4 bg-[#050102] border-t border-red-950/80 relative z-40">
       <div className="max-w-4xl mx-auto space-y-2 relative">
 
         {/* Autocomplete Dropdown */}
@@ -349,34 +349,34 @@ export const InputBar: React.FC<{
 
         {/* Model Router Dynamic Notice when Vision attachments are present */}
         {hasAttachments && (
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-violet-950/30 border border-violet-500/30 text-xs text-violet-300 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-800/60 text-xs text-red-200 animate-in fade-in duration-200 font-mono">
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-violet-400 shrink-0" />
+              <Eye className="w-4 h-4 text-red-400 shrink-0" />
               <span>
-                <strong>Vision Input:</strong> {attachments.length} image{attachments.length > 1 ? 's' : ''} attached. Auto-routed via <strong>{visionModelName}</strong>.
+                <strong>Vision Input:</strong> {attachments.length} frame{attachments.length > 1 ? 's' : ''} staged. Routed via <strong>{visionModelName}</strong>.
               </span>
             </div>
             <button 
               onClick={() => onOpenModelSelector?.('vision')}
-              className="text-[11px] underline hover:text-violet-200 shrink-0"
+              className="text-[11px] underline hover:text-red-100 text-red-400 shrink-0 font-mono"
             >
-              Change Vision Model
+              Configure Vision Model
             </button>
           </div>
         )}
 
         {/* pxpipe Token Arbitrage Stats Banner */}
         {pxpipeStats && (
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-300 animate-in fade-in duration-200 font-mono">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-red-950/50 border border-red-700/60 text-xs text-red-200 animate-in fade-in duration-200 font-mono">
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+              <Zap className="w-4 h-4 text-red-500 shrink-0" />
               <span>
-                <strong>pxpipe Arbitrage:</strong> Compressed {pxpipeStats.originalChars} chars → ~{pxpipeStats.estimatedVisualTokens} visual tokens (<strong className="text-emerald-200">-{pxpipeStats.tokenSavingsPct}% reduction</strong>)
+                <strong>pxpipe Arbitrage:</strong> Compressed {pxpipeStats.originalChars} chars → ~{pxpipeStats.estimatedVisualTokens} visual tokens (<strong className="text-red-200">-{pxpipeStats.tokenSavingsPct}% reduction</strong>)
               </span>
             </div>
             <button
               onClick={() => setPxpipeStats(null)}
-              className="text-emerald-400 hover:text-emerald-200 text-xs"
+              className="text-red-400 hover:text-red-100 text-xs font-bold"
             >
               ×
             </button>
@@ -385,21 +385,21 @@ export const InputBar: React.FC<{
 
         {/* Voice Dictation Active Indicator */}
         {isListening && (
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-xs text-rose-300 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-500/80 text-xs text-red-200 animate-in fade-in duration-200 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
               </span>
-              <span className="font-medium text-[11px] tracking-wide">
-                Voice Dictation Active — Listening...
+              <span className="font-mono font-bold text-[11px] tracking-wider text-red-300">
+                VOICE_STREAM_ACTIVE // LISTENING...
               </span>
             </div>
             <button 
               onClick={handleToggleDictation}
-              className="text-[11px] font-semibold text-rose-400 hover:text-rose-200 uppercase tracking-wider"
+              className="text-[11px] font-bold text-red-400 hover:text-red-100 uppercase tracking-wider font-mono border border-red-800 px-2 py-0.5 rounded bg-black/60"
             >
-              Stop
+              TERMINATE
             </button>
           </div>
         )}
@@ -412,11 +412,11 @@ export const InputBar: React.FC<{
                 <img 
                   src={img} 
                   alt="upload preview" 
-                  className="w-14 h-14 object-cover rounded-lg border border-indigo-500/40 shadow-sm"
+                  className="w-14 h-14 object-cover rounded-lg border border-red-600/70 shadow-[0_0_8px_rgba(239,68,68,0.3)]"
                 />
                 <button
                   onClick={() => removeAttachment(idx)}
-                  className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-rose-400 opacity-90 group-hover/att:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-black border border-red-900 text-red-300 hover:text-white opacity-90 group-hover/att:opacity-100 transition-opacity"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -426,7 +426,7 @@ export const InputBar: React.FC<{
         )}
 
         {/* Main Input Box Row (Clean, minimal, single bar) */}
-        <div className="relative rounded-2xl bg-[#0c111e] border border-slate-800 hover:border-slate-700 focus-within:border-indigo-500/80 shadow-lg shadow-black/40 transition-all">
+        <div className="relative rounded-2xl bg-[#080204] border border-red-900/80 hover:border-red-700/90 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-400 focus-within:shadow-[0_0_35px_rgba(239,68,68,0.7),0_0_15px_rgba(255,60,60,0.4)] shadow-lg shadow-black/80 transition-all duration-200">
           <textarea
             ref={inputRef}
             value={input}
@@ -437,11 +437,11 @@ export const InputBar: React.FC<{
             aria-label="Message input"
             placeholder={
               settings.systemOverride
-                ? "Send command... (System Override Active)"
-                : "Ask WormGPT, type /tool for tools, @model to switch models..."
+                ? "ROOT_COMMAND_PROMPT >> (System Override Active)"
+                : "PROMPT >> /tool to arm weapons, @model to route payload..."
             }
             rows={1}
-            className="w-full pl-4 pr-28 pt-3.5 pb-3 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed min-h-[48px] max-h-48 overflow-y-auto"
+            className="w-full pl-4 pr-28 pt-3.5 pb-3 bg-transparent text-sm font-mono text-red-100 placeholder-red-700/60 focus:outline-none resize-none leading-relaxed min-h-[48px] max-h-48 overflow-y-auto caret-red-500 focus:caret-white transition-[caret-color] duration-200"
           />
 
           {/* Hidden File Input */}
@@ -462,10 +462,10 @@ export const InputBar: React.FC<{
                 type="button"
                 onClick={handleCompressWithPxpipe}
                 disabled={isCompressingPxpipe}
-                className="px-2 py-1 rounded-md bg-emerald-950/60 border border-emerald-500/40 text-[10px] font-mono text-emerald-300 hover:bg-emerald-900/60 transition-all flex items-center gap-1 shadow-sm"
+                className="px-2 py-1 rounded-md bg-red-950/70 border border-red-600/60 text-[10px] font-mono text-red-200 hover:bg-red-900/60 transition-all flex items-center gap-1 shadow-sm"
                 title="pxpipe Vision Arbitrage: Render dense text to image to slash token costs by ~65%"
               >
-                <Zap className="w-3 h-3 text-emerald-400" />
+                <Zap className="w-3 h-3 text-red-500" />
                 <span className="hidden sm:inline">{isCompressingPxpipe ? '...' : 'pxpipe'}</span>
               </button>
             )}
@@ -477,8 +477,8 @@ export const InputBar: React.FC<{
                 onClick={handleToggleDictation}
                 className={`p-2 rounded-lg transition-all ${
                   isListening
-                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-950/60 animate-pulse'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'
+                    ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-pulse'
+                    : 'text-red-400 hover:text-red-200 hover:bg-red-950/60'
                 }`}
                 title={isListening ? "Listening... Click to stop dictation" : "Voice Dictation"}
               >
@@ -490,7 +490,7 @@ export const InputBar: React.FC<{
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors"
+              className="p-2 rounded-lg text-red-400 hover:text-red-200 hover:bg-red-950/60 transition-colors"
               title="Attach images or documents"
             >
               <Paperclip className="w-4 h-4" />
@@ -501,18 +501,18 @@ export const InputBar: React.FC<{
               <button
                 type="button"
                 onClick={handleAbort}
-                className="px-2.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/40 ring-1 ring-rose-400/50 flex items-center gap-1.5 transition-all animate-pulse"
+                className="px-2.5 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white shadow-[0_0_20px_rgba(239,68,68,0.8)] border border-red-400 flex items-center gap-1.5 transition-all animate-pulse"
                 title="Stop generation"
               >
                 <Square className="w-4 h-4 fill-current" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Stop</span>
+                <span className="text-xs font-mono font-bold uppercase tracking-wider">HALT</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => handleSend()}
                 disabled={!input.trim() && attachments.length === 0}
-                className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white shadow-md shadow-indigo-950/40 transition-all"
+                className="p-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-25 disabled:hover:bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)] border border-red-500/50 transition-all"
                 title="Send message (Enter)"
               >
                 <Send className="w-4 h-4" />
@@ -521,68 +521,43 @@ export const InputBar: React.FC<{
           </div>
         </div>
 
-        {/* Bottom Status Bar */}
-        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 font-mono">
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => {
-                setAutocomplete({ visible: true, type: 'model', query: '', index: 0, startIndex: input.length });
-                if (inputRef.current) inputRef.current.focus();
-              }}
-              className="hover:text-indigo-300 transition-colors flex items-center gap-1 group"
-              title="Click or type @model to switch models"
-            >
-              <span className="text-slate-500 group-hover:text-indigo-400">@model:</span>
-              <span className="text-slate-300 group-hover:underline underline-offset-2">{settings.model}</span>
-            </button>
-
-            <span className="text-slate-700">•</span>
-
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="hover:text-indigo-300 transition-colors flex items-center gap-1"
-              title="Click to configure providers & API keys"
-            >
-              <span className="text-slate-500">Provider:</span>
-              <span className="text-indigo-400 font-semibold">{settings.aiProvider || 'pollinations'}</span>
-            </button>
-
-            <span className="text-slate-700">•</span>
-
+        {/* Bottom Helper Bar (Clean, uncluttered, refined hierarchy) */}
+        <div className="flex items-center justify-between text-[11px] text-red-500/80 px-1 font-mono">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 setAutocomplete({ visible: true, type: 'tool', query: '', index: 0, startIndex: input.length });
                 if (inputRef.current) inputRef.current.focus();
               }}
-              className="hover:text-emerald-300 transition-colors flex items-center gap-1 group"
+              className="hover:text-red-200 transition-colors flex items-center gap-1 group px-1.5 py-0.5 rounded bg-black/90 border border-red-950 hover:border-red-800"
               title="Click or type /tool to arm system tools"
             >
-              <span className="text-slate-500 group-hover:text-emerald-400">/tool:</span>
-              <span className="text-emerald-400 font-semibold">
+              <span className="text-red-500 group-hover:text-red-300">/tool</span>
+              <span className="text-red-300 font-bold">
                 {settings.enabledTools && settings.enabledTools.length > 0
                   ? `${settings.enabledTools.length} armed`
-                  : '0 armed'}
+                  : 'catalog'}
               </span>
             </button>
-
-            <span className="text-slate-700">•</span>
 
             <button
               type="button"
-              onClick={() => setIsArsenalOpen(true)}
-              className="hover:text-indigo-300 transition-colors flex items-center gap-1 group"
-              title="Browse 100 Remote HTTPS MCP Servers & Arm Tools"
+              onClick={() => {
+                setAutocomplete({ visible: true, type: 'model', query: '', index: 0, startIndex: input.length });
+                if (inputRef.current) inputRef.current.focus();
+              }}
+              className="hover:text-red-200 transition-colors flex items-center gap-1 group px-1.5 py-0.5 rounded bg-black/90 border border-red-950 hover:border-red-800"
+              title="Click or type @model to switch models"
             >
-              <span className="text-slate-500 group-hover:text-indigo-400">Arsenal:</span>
-              <span className="text-indigo-400 font-semibold">
-                {activeArsenalToolIds.length > 0 ? `${activeArsenalToolIds.length} MCPs` : 'Catalog'}
-              </span>
+              <span className="text-red-500 group-hover:text-red-300">@model</span>
+              <span className="text-red-200 font-bold truncate max-w-[140px]">{settings.model}</span>
             </button>
           </div>
-          <span className="hidden sm:inline text-slate-600">Enter to send • Shift+Enter for newline</span>
+
+          <span className="hidden sm:inline text-red-700/80 text-[11px] font-mono">
+            Enter to fire • Shift+Enter for newline
+          </span>
         </div>
 
       </div>

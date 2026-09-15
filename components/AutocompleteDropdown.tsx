@@ -140,48 +140,48 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
 
   return (
     <div 
-      className="absolute bottom-full left-0 mb-3 w-[22rem] sm:w-[30rem] md:w-[36rem] bg-[#0a0f1d] border border-indigo-500/50 rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.98),0_0_30px_rgba(99,102,241,0.2)] ring-1 ring-white/10 z-[200] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none flex flex-col"
+      className="absolute bottom-full left-0 mb-3 w-[22rem] sm:w-[30rem] md:w-[36rem] bg-[#070103] border border-red-600/70 rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.98),0_0_30px_rgba(239,68,68,0.25)] ring-1 ring-red-500/20 z-[200] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none flex flex-col font-mono"
       onClick={e => e.stopPropagation()}
     >
       {/* Header bar */}
-      <div className="px-3.5 py-2.5 bg-[#0d1424] border-b border-indigo-950/80 flex items-center justify-between shrink-0">
+      <div className="px-3.5 py-2.5 bg-[#0a0204] border-b border-red-950/90 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           {type === 'model' ? (
-            <span className="p-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-400">
+            <span className="p-1.5 rounded-lg bg-red-950/80 border border-red-600/60 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]">
               <Cpu className="w-4 h-4" />
             </span>
           ) : (
-            <span className="p-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-400">
+            <span className="p-1.5 rounded-lg bg-red-950/80 border border-red-600/60 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]">
               <Wrench className="w-4 h-4" />
             </span>
           )}
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold tracking-wide uppercase text-slate-100">
-                {type === 'model' ? 'SELECT ACTIVE MODEL (@model)' : 'ARM TOOL ARSENAL (/tool)'}
+              <span className="text-xs font-mono font-bold tracking-wide uppercase text-red-100">
+                {type === 'model' ? 'SELECT_TARGET_MODEL (@model)' : 'ARM_TOOL_ARSENAL (/tool)'}
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-950 border border-indigo-800/60 text-indigo-300 font-semibold">
-                {totalCount} available
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black border border-red-800/80 text-red-300 font-bold">
+                {totalCount} AVAIL
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-sans">
+            <p className="text-[10px] text-red-400/80 font-mono">
               {type === 'model'
-                ? 'Select any LLM to immediately route your queries'
+                ? 'Select neural LLM engine to direct payload queries'
                 : 'Arm system utilities to empower WormGPT agents'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1 text-[9px] text-slate-500 font-mono">
-            <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">↑↓</kbd>
-            <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">Enter</kbd>
+          <div className="hidden sm:flex items-center gap-1 text-[9px] text-red-500 font-mono">
+            <kbd className="px-1.5 py-0.5 rounded bg-black border border-red-950 text-red-400">↑↓</kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-black border border-red-950 text-red-400">ENTER</kbd>
           </div>
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors"
+              className="p-1.5 rounded-lg text-red-500 hover:text-red-200 hover:bg-red-950/60 transition-colors"
               title="Close dropdown"
             >
               <X className="w-4 h-4" />
@@ -191,7 +191,7 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
       </div>
 
       {/* Category Pills Bar */}
-      <div className="px-3 py-2 bg-[#090e1a] border-b border-indigo-950/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-xs font-mono">
+      <div className="px-3 py-2 bg-[#050102] border-b border-red-950/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-xs font-mono">
         {type === 'model' ? (
           <>
             {[
@@ -205,10 +205,10 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setModelCategory(tab.id as any)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap transition-all border ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap transition-all border font-mono ${
                   modelCategory === tab.id
-                    ? 'bg-indigo-600 text-white border-indigo-400 font-semibold shadow-sm shadow-indigo-950'
-                    : 'bg-[#0e1628] text-slate-400 border-indigo-950/80 hover:text-slate-200 hover:border-slate-700'
+                    ? 'bg-red-600 text-white border-red-400 font-bold shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                    : 'bg-black text-red-400 border-red-950 hover:text-red-200 hover:border-red-800'
                 }`}
               >
                 {tab.label}
@@ -229,10 +229,10 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setToolCategory(tab.id as any)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap transition-all border ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap transition-all border font-mono ${
                   toolCategory === tab.id
-                    ? 'bg-emerald-600 text-black border-emerald-400 font-bold shadow-sm'
-                    : 'bg-[#0e1628] text-slate-400 border-indigo-950/80 hover:text-slate-200 hover:border-slate-700'
+                    ? 'bg-red-600 text-white border-red-400 font-bold shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                    : 'bg-black text-red-400 border-red-950 hover:text-red-200 hover:border-red-800'
                 }`}
               >
                 {tab.label}
@@ -245,15 +245,15 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
       {/* Suggestion list */}
       <div 
         ref={scrollContainerRef}
-        className="max-h-72 overflow-y-auto custom-scrollbar p-2 space-y-1.5 bg-[#090d18]"
+        className="max-h-72 overflow-y-auto custom-scrollbar p-2 space-y-1.5 bg-[#050102]"
       >
         {totalCount === 0 ? (
-          <div className="py-8 px-4 text-center text-xs text-slate-400">
-            <p className="font-semibold text-slate-300 mb-1">
-              No matching {type === 'model' ? 'models' : 'tools'} found.
+          <div className="py-8 px-4 text-center text-xs text-red-400 font-mono">
+            <p className="font-bold text-red-300 mb-1">
+              NO MATCHING {type === 'model' ? 'MODELS' : 'TOOLS'} FOUND.
             </p>
-            <p className="text-[11px] text-slate-500 font-mono">
-              Try switching category tabs or clearing your filter query.
+            <p className="text-[11px] text-red-600 font-mono">
+              Adjust category tabs or clear query.
             </p>
           </div>
         ) : type === 'model' ? (
@@ -266,49 +266,49 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                 key={m.value + '-' + i}
                 ref={isSelected ? activeItemRef : null}
                 onClick={() => onSelect(m)}
-                className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between group/item border ${
+                className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between group/item border font-mono ${
                   isSelected 
-                    ? 'bg-indigo-950/80 border-indigo-500/80 shadow-[0_0_20px_rgba(99,102,241,0.25)]' 
-                    : 'bg-[#0d1424]/90 border-indigo-950/60 hover:bg-[#121b30] hover:border-indigo-800/60'
+                    ? 'bg-red-950/80 border-red-500/80 shadow-[0_0_20px_rgba(239,68,68,0.3)]' 
+                    : 'bg-[#080204]/90 border-red-950/70 hover:bg-red-950/40 hover:border-red-800/60'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <span className={`p-2 rounded-lg shrink-0 transition-colors ${
-                    isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400 group-hover/item:text-indigo-300'
+                    isSelected ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-black text-red-400 border border-red-950 group-hover/item:text-red-200'
                   }`}>
                     <Cpu className="w-4 h-4" />
                   </span>
 
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-semibold truncate ${
-                        isSelected ? 'text-white' : 'text-slate-200'
+                      <span className={`text-xs font-bold truncate ${
+                        isSelected ? 'text-red-100 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]' : 'text-red-200'
                       }`}>
                         {m.label}
                       </span>
                       {isCurrentlyActive && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/60 text-emerald-400 font-bold">
-                          ACTIVE
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-950 border border-red-500 text-red-200 font-bold animate-pulse">
+                          ARMED
                         </span>
                       )}
                       {m.isFree && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-950/90 border border-cyan-500/50 text-cyan-300 font-semibold">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-950/60 border border-red-600/50 text-red-300 font-semibold">
                           FREE
                         </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-[10px] font-mono text-slate-400 truncate max-w-[220px]">
+                      <span className="text-[10px] font-mono text-red-500 truncate max-w-[220px]">
                         {m.value}
                       </span>
                       {m.provider && (
-                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-indigo-950/80 border border-indigo-900/60 text-indigo-400 shrink-0">
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-black border border-red-950 text-red-400 shrink-0">
                           {m.provider}
                         </span>
                       )}
                       {m.contextWindow && (
-                        <span className="text-[9px] font-mono text-slate-500 shrink-0">
+                        <span className="text-[9px] font-mono text-red-700 shrink-0">
                           {(m.contextWindow / 1000).toFixed(0)}k ctx
                         </span>
                       )}
@@ -318,12 +318,12 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {isSelected ? (
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-mono font-bold shadow-md shadow-indigo-950 animate-pulse">
-                      <span>SELECT</span>
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 text-white text-[10px] font-mono font-bold shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse">
+                      <span>ARM</span>
                       <ChevronRight className="w-3 h-3" />
                     </div>
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-slate-600 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                    <ChevronRight className="w-4 h-4 text-red-800 opacity-0 group-hover/item:opacity-100 transition-opacity" />
                   )}
                 </div>
               </div>
@@ -339,15 +339,15 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                 key={tool.name + '-' + i}
                 ref={isSelected ? activeItemRef : null}
                 onClick={() => onSelect(tool)}
-                className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between group/item border ${
+                className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between group/item border font-mono ${
                   isSelected 
-                    ? 'bg-emerald-950/80 border-emerald-500/80 shadow-[0_0_20px_rgba(16,185,129,0.25)]' 
-                    : 'bg-[#0d1424]/90 border-indigo-950/60 hover:bg-emerald-950/40 hover:border-emerald-800/50'
+                    ? 'bg-red-950/80 border-red-500/80 shadow-[0_0_20px_rgba(239,68,68,0.3)]' 
+                    : 'bg-[#080204]/90 border-red-950/70 hover:bg-red-950/40 hover:border-red-800/50'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <span className={`p-2 rounded-lg shrink-0 transition-colors ${
-                    isSelected ? 'bg-emerald-600 text-black font-bold' : 'bg-slate-900 text-slate-400 group-hover/item:text-emerald-300'
+                    isSelected ? 'bg-red-600 text-white font-bold shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-black text-red-400 border border-red-950 group-hover/item:text-red-200'
                   }`}>
                     <Terminal className="w-4 h-4" />
                   </span>
@@ -355,30 +355,30 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs font-mono font-bold truncate ${
-                        isSelected ? 'text-emerald-100' : 'text-slate-200'
+                        isSelected ? 'text-red-100 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]' : 'text-red-200'
                       }`}>
                         {tool.name}
                       </span>
                       {isArmed && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/60 text-emerald-400 font-bold flex items-center gap-1">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-950 border border-red-500 text-red-200 font-bold flex items-center gap-1">
                           <Check className="w-2.5 h-2.5" /> ARMED
                         </span>
                       )}
                     </div>
 
-                    <p className="text-[11px] text-slate-400 font-sans line-clamp-1 mt-0.5">
+                    <p className="text-[11px] text-red-300/80 font-mono line-clamp-1 mt-0.5">
                       {tool.description}
                     </p>
 
                     {tool.parameters.length > 0 && (
                       <div className="flex items-center gap-1 mt-1 flex-wrap">
                         {tool.parameters.slice(0, 4).map(p => (
-                          <span key={p} className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#060a14] border border-indigo-950 text-slate-400">
+                          <span key={p} className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-black border border-red-950 text-red-400">
                             {p}
                           </span>
                         ))}
                         {tool.parameters.length > 4 && (
-                          <span className="text-[8px] font-mono text-slate-500">
+                          <span className="text-[8px] font-mono text-red-700">
                             +{tool.parameters.length - 4} more
                           </span>
                         )}
@@ -389,12 +389,12 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {isSelected ? (
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-black text-[10px] font-mono font-bold shadow-md animate-pulse">
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 text-white text-[10px] font-mono font-bold shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse">
                       <span>ARM TOOL</span>
                       <ChevronRight className="w-3 h-3" />
                     </div>
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-slate-600 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                    <ChevronRight className="w-4 h-4 text-red-800 opacity-0 group-hover/item:opacity-100 transition-opacity" />
                   )}
                 </div>
               </div>
@@ -404,12 +404,12 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
       </div>
 
       {/* Footer quick help */}
-      <div className="px-3.5 py-2 bg-[#060912] border-t border-indigo-950/80 text-[10px] text-slate-400 font-mono flex items-center justify-between shrink-0">
-        <span className="flex items-center gap-1.5 text-indigo-300">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span>{type === 'model' ? 'Enter/Click to switch model' : 'Enter/Click to toggle & arm tool'}</span>
+      <div className="px-3.5 py-2 bg-[#0a0204] border-t border-red-950/80 text-[10px] text-red-400 font-mono flex items-center justify-between shrink-0">
+        <span className="flex items-center gap-1.5 text-red-300">
+          <Sparkles className="w-3.5 h-3.5 text-red-400" />
+          <span>{type === 'model' ? 'Enter/Click to switch target model' : 'Enter/Click to toggle & arm utility'}</span>
         </span>
-        <span className="text-slate-500">ESC to close</span>
+        <span className="text-red-700">ESC to abort</span>
       </div>
     </div>
   );

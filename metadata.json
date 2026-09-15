@@ -1,5 +1,5 @@
 {
-  "name": "WormGPT Terminal",
+  "name": "WormGPT Red Terminal",
   "description": "WormGPT - Advanced Multi-Provider AI Terminal featuring 108+ frontier and local model providers, auto-fallback matrix, MCP tool ecosystem, vision arbitrage, and multi-agent orchestration",
   "requestFramePermissions": [
     "microphone"

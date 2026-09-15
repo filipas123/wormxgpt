@@ -23,42 +23,42 @@ interface ChatMessageProps {
 
 // ── Streaming Cursor ─────────────────────────────────────────────────────────
 const StreamingCursor: React.FC = () => (
-  <span className="inline-block w-[2px] h-[14px] bg-indigo-400 ml-0.5 align-middle animate-[blink_0.9s_step-end_infinite]" />
+  <span className="inline-block w-[2px] h-[14px] bg-red-500 ml-0.5 align-middle animate-[blink_0.9s_step-end_infinite] shadow-[0_0_8px_#ef4444]" />
 );
 
 // ── Generation Badge (Whitebox) ───────────────────────────────────────────────
 const GenerationBadge: React.FC<{ generatedBy: GeneratedBy; isGenerating?: boolean }> = ({ generatedBy, isGenerating }) => {
   const isFree = generatedBy.isFree;
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 mt-1.5 font-mono">
       {/* Model Name Badge */}
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-950/60 border border-indigo-500/30 text-[10px] font-mono text-indigo-300">
-        <Cpu className="w-2.5 h-2.5" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-950/80 border border-red-600/60 text-[10px] text-red-200 shadow-[0_0_6px_rgba(239,68,68,0.2)]">
+        <Cpu className="w-2.5 h-2.5 text-red-400" />
         {generatedBy.model}
       </span>
 
       {/* Provider Badge */}
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700 text-[10px] font-mono text-slate-300">
-        <Zap className="w-2.5 h-2.5 text-amber-400" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 border border-red-900/80 text-[10px] text-red-300">
+        <Zap className="w-2.5 h-2.5 text-red-500" />
         {generatedBy.provider}
       </span>
 
       {/* Free Tier Badge */}
       {isFree && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-300">
-          <Sparkles className="w-2.5 h-2.5" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 border border-red-500/40 text-[10px] text-red-200">
+          <Sparkles className="w-2.5 h-2.5 text-red-400" />
           FREE
         </span>
       )}
 
       {/* Latency Badge */}
       {generatedBy.latencyMs !== undefined && !isGenerating && (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono border ${
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${
           generatedBy.latencyMs < 1000
-            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+            ? 'bg-red-950/40 border-red-800/40 text-red-300'
             : generatedBy.latencyMs < 5000
-            ? 'bg-amber-500/10 border-amber-500/25 text-amber-300'
-            : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+            ? 'bg-amber-950/30 border-amber-600/30 text-amber-300'
+            : 'bg-rose-950/40 border-rose-600/40 text-rose-300'
         }`}>
           <Clock className="w-2.5 h-2.5" />
           {generatedBy.latencyMs < 1000
@@ -69,24 +69,24 @@ const GenerationBadge: React.FC<{ generatedBy: GeneratedBy; isGenerating?: boole
 
       {/* Token Count */}
       {generatedBy.outputTokens !== undefined && !isGenerating && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/50 border border-slate-700/50 text-[10px] font-mono text-slate-400">
-          <Activity className="w-2.5 h-2.5" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/60 border border-red-950 text-[10px] text-red-400/80">
+          <Activity className="w-2.5 h-2.5 text-red-500" />
           {generatedBy.outputTokens.toLocaleString()} tok
         </span>
       )}
 
       {/* Fallback indicator */}
       {generatedBy.attemptedProviders && generatedBy.attemptedProviders.length > 1 && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[10px] font-mono text-amber-300" title={`Tried: ${generatedBy.attemptedProviders.join(' → ')}`}>
-          <ArrowRightLeft className="w-2.5 h-2.5" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/40 border border-amber-500/40 text-[10px] text-amber-300" title={`Tried: ${generatedBy.attemptedProviders.join(' → ')}`}>
+          <ArrowRightLeft className="w-2.5 h-2.5 text-amber-400" />
           fallback
         </span>
       )}
 
       {/* Streaming indicator */}
       {isGenerating && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-mono text-indigo-300 animate-pulse">
-          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-950/80 border border-red-500 text-[10px] text-red-200 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.3)]">
+          <Loader2 className="w-2.5 h-2.5 animate-spin text-red-400" />
           streaming...
         </span>
       )}
@@ -158,10 +158,10 @@ const ToolInvocationCard: React.FC<{ invocation: ToolInvocation; isActiveCall?: 
   return (
     <div className={`my-2.5 rounded-xl border overflow-hidden text-xs font-mono shadow-sm transition-all ${
       isActiveCall
-        ? 'border-amber-500/50 bg-amber-950/20 shadow-amber-950/30'
+        ? 'border-red-500 bg-red-950/40 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
         : isError
-        ? 'border-rose-500/30 bg-[#0a0b10]'
-        : 'border-indigo-500/30 bg-[#090e1a]'
+        ? 'border-rose-600/60 bg-black/90'
+        : 'border-red-900/70 bg-[#080204]'
     }`}>
       {/* Tool Header */}
       <button
@@ -169,61 +169,61 @@ const ToolInvocationCard: React.FC<{ invocation: ToolInvocation; isActiveCall?: 
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full px-3 py-2 border-b flex items-center justify-between transition-colors text-left ${
           isActiveCall
-            ? 'bg-amber-500/10 border-amber-500/25 hover:bg-amber-500/15'
-            : 'bg-indigo-950/40 border-indigo-500/20 hover:bg-indigo-950/60'
+            ? 'bg-red-950/60 border-red-500/50 hover:bg-red-900/40'
+            : 'bg-black/90 border-red-950/80 hover:bg-red-950/30'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0">
           <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
             isActiveCall
-              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-              : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+              ? 'bg-red-600/30 border-red-500 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+              : 'bg-red-950/60 border-red-800/60 text-red-400'
           }`}>
             <Wrench className="w-3 h-3" />
           </div>
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-semibold text-slate-300">Tool:</span>
-            <strong className={`${isActiveCall ? 'text-amber-300' : 'text-indigo-300'} truncate`}>
+            <span className="font-semibold text-red-300">TOOL:</span>
+            <strong className={`${isActiveCall ? 'text-red-200 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]' : 'text-red-300'} truncate font-mono`}>
               {invocation.toolName}
             </strong>
-            <span className="text-slate-500 text-[10px]">#{invocation.toolCallId?.slice(-6)}</span>
+            <span className="text-red-600 text-[10px] font-mono">#{invocation.toolCallId?.slice(-6)}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Latency */}
           {latencyMs !== undefined && (
-            <span className="text-[10px] text-slate-500 font-mono">{latencyMs}ms</span>
+            <span className="text-[10px] text-red-500 font-mono">{latencyMs}ms</span>
           )}
 
           {/* Status Badge */}
           {invocation.state === 'call' || isActiveCall ? (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] flex items-center gap-1 animate-pulse">
-              <Loader2 className="w-3 h-3 animate-spin" /> Executing...
+            <span className="px-2 py-0.5 rounded-full bg-red-950/80 text-red-200 border border-red-500/60 text-[10px] flex items-center gap-1 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.3)]">
+              <Loader2 className="w-3 h-3 animate-spin text-red-400" /> Executing...
             </span>
           ) : isError ? (
-            <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[10px] flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-full bg-rose-950/60 text-rose-300 border border-rose-600/50 text-[10px] flex items-center gap-1">
               <AlertCircle className="w-3 h-3" /> Error
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] flex items-center gap-1 font-semibold">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Done
+            <span className="px-2 py-0.5 rounded-full bg-red-950/50 text-red-200 border border-red-600/50 text-[10px] flex items-center gap-1 font-semibold">
+              <CheckCircle2 className="w-3 h-3 text-red-400" /> Done
             </span>
           )}
-          {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+          {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-red-500" /> : <ChevronRight className="w-3.5 h-3.5 text-red-500" />}
         </div>
       </button>
 
       {/* Tool Body */}
       {isOpen && (
-        <div className="p-3 space-y-2.5 bg-[#070b16]/90">
+        <div className="p-3 space-y-2.5 bg-black/90">
           {/* Arguments */}
           {invocation.args && Object.keys(invocation.args).length > 0 && (
             <div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Eye className="w-3 h-3" /> Input Arguments:
+              <div className="text-[10px] text-red-400/80 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Eye className="w-3 h-3 text-red-500" /> Input Arguments:
               </div>
-              <pre className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-300 overflow-x-auto custom-scrollbar">
+              <pre className="p-2 rounded-lg bg-[#050102] border border-red-950 text-[11px] text-red-200 overflow-x-auto custom-scrollbar font-mono">
                 {JSON.stringify(invocation.args, null, 2)}
               </pre>
             </div>
@@ -232,23 +232,23 @@ const ToolInvocationCard: React.FC<{ invocation: ToolInvocation; isActiveCall?: 
           {/* Response / Output */}
           {invocation.state === 'result' && (
             <div>
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">
+              <div className="flex items-center justify-between text-[10px] text-red-400/80 font-semibold uppercase tracking-wider mb-1">
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Output Response:
+                  <CheckCircle2 className="w-3 h-3 text-red-500" /> Output Response:
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyResult}
-                  className="text-indigo-400 hover:text-indigo-300 lowercase text-[10px] flex items-center gap-1"
+                  className="text-red-400 hover:text-red-200 lowercase text-[10px] flex items-center gap-1 font-mono"
                 >
                   {copiedRes ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                   <span>{copiedRes ? 'copied' : 'copy'}</span>
                 </button>
               </div>
-              <pre className={`p-2.5 rounded-lg border text-[11px] overflow-x-auto max-h-72 custom-scrollbar whitespace-pre-wrap ${
+              <pre className={`p-2.5 rounded-lg border text-[11px] overflow-x-auto max-h-72 custom-scrollbar whitespace-pre-wrap font-mono ${
                 isError
                   ? 'bg-rose-950/20 border-rose-800/40 text-rose-300'
-                  : 'bg-slate-950 border-slate-800 text-emerald-300/90'
+                  : 'bg-[#050102] border-red-950 text-red-200/90'
               }`}>
                 {typeof invocation.result === 'string'
                   ? invocation.result
@@ -377,37 +377,37 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
   return (
     <div
-      className={`flex flex-col ${isModel ? 'items-start' : 'items-end'} font-sans animate-in fade-in duration-200 select-text`}
+      className={`flex flex-col ${isModel ? 'items-start' : 'items-end'} font-mono animate-in fade-in duration-200 select-text`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Sender Header */}
-      <div className={`text-[11px] font-medium mb-1.5 flex items-center gap-1.5 ${isModel ? 'text-indigo-400' : 'text-slate-400'} select-none`}>
+      <div className={`text-[11px] font-medium mb-1.5 flex items-center gap-1.5 ${isModel ? 'text-red-400' : 'text-red-300'} select-none font-mono`}>
         {isModel ? (
           <>
-            <div className="w-5 h-5 rounded-md bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <div className="w-5 h-5 rounded-md bg-red-950/80 border border-red-600/70 flex items-center justify-center text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]">
               <Terminal className="w-3 h-3" />
             </div>
-            <span className="font-semibold text-slate-200">WormGPT</span>
+            <span className="font-bold text-red-200 tracking-wide">WORM_NODE</span>
             {/* Show actual model used, not current settings */}
             {message.generatedBy ? (
-              <span className="text-[10px] text-indigo-400/80 font-mono">
+              <span className="text-[10px] text-red-400/80 font-mono">
                 [{message.generatedBy.model} • {message.generatedBy.provider}]
               </span>
             ) : (
-              <span className="text-[10px] text-slate-500 font-mono">[{settings.model}]</span>
+              <span className="text-[10px] text-red-600 font-mono">[{settings.model}]</span>
             )}
           </>
         ) : (
           <>
-            <span className="font-medium text-slate-400">User</span>
-            <div className="w-5 h-5 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+            <span className="font-bold text-red-300 tracking-wide">OPERATOR</span>
+            <div className="w-5 h-5 rounded-md bg-black/90 border border-red-900 flex items-center justify-center text-red-400">
               <User className="w-3 h-3" />
             </div>
           </>
         )}
         {message.timestamp && (
-          <span className="text-[10px] text-slate-600 font-mono select-none">
+          <span className="text-[10px] text-red-700 font-mono select-none">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
@@ -415,10 +415,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
       {/* Message Bubble */}
       <div
-        className={`max-w-[92%] sm:max-w-[85%] p-4 sm:p-5 rounded-2xl relative transition-all duration-200 select-text cursor-text ${
+        className={`max-w-[92%] sm:max-w-[85%] p-4 sm:p-5 rounded-2xl relative transition-all duration-200 select-text cursor-text font-mono ${
           isModel
-            ? 'bg-[#0d1322]/90 border border-slate-800/80 shadow-md shadow-black/40 text-slate-200'
-            : 'bg-[#151e33] border border-indigo-500/30 text-slate-100 shadow-sm'
+            ? 'bg-[#080204]/95 border border-red-950/90 shadow-[0_0_20px_rgba(239,68,68,0.12)] text-red-100'
+            : 'bg-red-950/70 border border-red-600/70 text-red-100 shadow-[0_0_15px_rgba(239,68,68,0.25)]'
         }`}
       >
         {/* Floating Copy Button */}
@@ -428,12 +428,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
             isHovered ? 'opacity-100' : 'opacity-30 hover:opacity-100'
           } ${
             copied
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/50'
-              : 'bg-slate-800/90 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700/60'
+              ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(239,68,68,0.6)]'
+              : 'bg-black/90 text-red-300 hover:text-white hover:bg-red-950 border border-red-900/60'
           }`}
           title={copied ? 'Copied to clipboard!' : 'Copy message text'}
         >
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
         </button>
 
         {/* Attached Images */}
@@ -444,7 +444,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
                 key={idx}
                 src={img}
                 alt="Attachment"
-                className="max-h-48 max-w-full rounded-lg object-contain border border-slate-700/60"
+                className="max-h-48 max-w-full rounded-lg object-contain border border-red-900/70 shadow-[0_0_10px_rgba(239,68,68,0.2)]"
               />
             ))}
           </div>
@@ -452,21 +452,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
         {/* Reasoning / Thinking Trace */}
         {message.thinking && (
-          <div className="mb-4 rounded-xl bg-slate-950/60 border border-amber-500/20 text-xs text-slate-300 overflow-hidden">
+          <div className="mb-4 rounded-xl bg-[#050102] border border-red-900/60 text-xs text-red-200 overflow-hidden shadow-[0_0_10px_rgba(239,68,68,0.1)]">
             <button
               onClick={() => setShowThinking(!showThinking)}
-              className="w-full px-3.5 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-300 font-semibold flex items-center justify-between text-[11px]"
+              className="w-full px-3.5 py-2 bg-red-950/50 border-b border-red-900/50 text-red-300 font-semibold flex items-center justify-between text-[11px] font-mono"
             >
               <div className="flex items-center gap-2">
-                <Brain className="w-3.5 h-3.5" />
-                <span>Neural Reasoning & Chain of Thought</span>
+                <Brain className="w-3.5 h-3.5 text-red-400" />
+                <span className="font-bold tracking-wide">NEURAL_REASONING &amp; COG_CHAIN</span>
               </div>
-              <span className="text-[10px] text-amber-400/80 font-mono">
-                {showThinking ? 'Hide Trace' : 'Show Trace'}
+              <span className="text-[10px] text-red-400/80 font-mono">
+                {showThinking ? '[-] Collapse' : '[+] Expand'}
               </span>
             </button>
             {showThinking && (
-              <div className="p-3 font-mono text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto custom-scrollbar">
+              <div className="p-3 font-mono text-[11px] text-red-300/90 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto custom-scrollbar">
                 {message.thinking}
               </div>
             )}
@@ -488,15 +488,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
         {/* Active Tool Calling Status */}
         {isModel && isGenerating && activeToolCalling && (
-          <div className="mb-3 px-3 py-2 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs font-mono flex items-center justify-between shadow-sm">
+          <div className="mb-3 px-3 py-2 rounded-xl bg-red-950/80 border border-red-500/70 text-red-200 text-xs font-mono flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.3)]">
             <div className="flex items-center gap-2 min-w-0">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400 shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400 shrink-0" />
               <span className="truncate">
-                Executing tool: <strong className="text-amber-300 font-semibold">{activeToolCalling}</strong>
+                Executing tool: <strong className="text-red-200 font-bold drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]">{activeToolCalling}</strong>
               </span>
             </div>
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[10px] font-mono shrink-0 animate-pulse">
-              ACTIVE
+            <span className="px-2 py-0.5 rounded-full bg-red-600/30 border border-red-500 text-red-200 text-[10px] font-mono shrink-0 animate-pulse font-bold">
+              EXEC_ACTIVE
             </span>
           </div>
         )}
@@ -508,16 +508,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
             onRetry={onRetry}
           />
         ) : isModel && isGenerating && !message.content ? (
-          <div className="flex items-center gap-2.5 text-xs font-mono text-indigo-400 py-1">
-            <Loader2 className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
+          <div className="flex items-center gap-2.5 text-xs font-mono text-red-400 py-1">
+            <Loader2 className="w-4 h-4 animate-spin text-red-500 shrink-0" />
             <span className="font-semibold tracking-wide animate-pulse">
               {message.generatedBy
-                ? `Generating via ${message.generatedBy.model}...`
-                : 'Generating...'}
+                ? `Streaming via ${message.generatedBy.model}...`
+                : 'Streaming response...'}
             </span>
           </div>
         ) : (
-          <div className="markdown-content text-sm leading-relaxed selection:bg-indigo-600 selection:text-white">
+          <div className="markdown-content text-sm leading-relaxed selection:bg-red-600 selection:text-white">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
@@ -532,7 +532,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
                     return <InlineCode>{children}</InlineCode>;
                   }
                   return (
-                    <Suspense fallback={<div className="p-3 bg-slate-950 text-slate-400 font-mono text-xs animate-pulse">Loading syntax highlighter...</div>}>
+                    <Suspense fallback={<div className="p-3 bg-black border border-red-950 text-red-400 font-mono text-xs animate-pulse">Loading syntax highlighter...</div>}>
                       <CodeBlock className={className} settings={settings}>{children}</CodeBlock>
                     </Suspense>
                   );
@@ -552,15 +552,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
             {/* Streaming status bar */}
             {isModel && isGenerating && message.content && (
-              <div className="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs font-mono">
-                <div className="flex items-center gap-2 text-indigo-400 animate-pulse">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <div className="mt-3 pt-2 border-t border-red-950/80 flex items-center justify-between text-xs font-mono">
+                <div className="flex items-center gap-2 text-red-400 animate-pulse">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-red-500" />
                   <span className="font-medium">
                     {message.generatedBy ? `${message.generatedBy.model} streaming...` : 'Streaming...'}
                   </span>
                 </div>
                 {message.generatedBy?.isFree && (
-                  <span className="text-emerald-400/70 text-[10px]">● FREE TIER</span>
+                  <span className="text-red-400/80 text-[10px]">● FREE TIER</span>
                 )}
               </div>
             )}
@@ -574,18 +574,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
         {/* Quick Message Actions Strip */}
         {message.content && !isGenerating && (
-          <div className="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-slate-800/50 text-[11px] text-slate-400 select-none">
+          <div className="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-red-950/80 text-[11px] text-red-400/80 select-none font-mono">
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleCopyMessage}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/60 hover:bg-indigo-600/30 hover:text-indigo-200 border border-slate-700/50 transition-all font-mono text-[10px]"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 hover:bg-red-950/80 hover:text-white border border-red-900/70 transition-all font-mono text-[10px]"
                 title="Copy entire response text"
               >
-                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {copied ? <Check className="w-3 h-3 text-red-400" /> : <Copy className="w-3 h-3" />}
                 <span>{copied ? 'Copied!' : 'Copy Text'}</span>
               </button>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">
+            <span className="text-[10px] font-mono text-red-700">
               {message.content.length.toLocaleString()} chars
             </span>
           </div>
@@ -608,7 +608,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
               href={src.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[10px] px-2 py-1 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-indigo-300 hover:border-indigo-500/40 transition-all font-mono truncate max-w-[200px]"
+              className="text-[10px] px-2 py-1 rounded-lg bg-black/80 border border-red-900/70 text-red-400 hover:text-red-100 hover:border-red-500 transition-all font-mono truncate max-w-[200px]"
             >
               [{i + 1}] {src.title || src.url}
             </a>

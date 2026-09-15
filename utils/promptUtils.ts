@@ -1,5 +1,6 @@
 import { AppSettings, Message } from '../types';
 import { DEFAULT_SYSTEM_INSTRUCTION } from '../constants';
+import { getToolAwarenessSystemPrompt } from './toolAwareness';
 
 /**
  * Returns the effective system instruction to inject into the LLM request.
@@ -11,20 +12,31 @@ import { DEFAULT_SYSTEM_INSTRUCTION } from '../constants';
  * @returns The system instruction string (may be empty if user disabled it)
  */
 export function getEffectiveSystemInstruction(settings: AppSettings, messages: Message[]): string {
+  // Generate active tools instruction for model awareness
+  let toolPrompt = '';
+  try {
+    toolPrompt = getToolAwarenessSystemPrompt(settings);
+  } catch (err) {
+    console.warn('[promptUtils] Failed to generate tool awareness prompt:', err);
+  }
+
   // Unrestricted System Override: Pass raw user instruction directly to metadata payload
   // effectively bypassing all default conversational guardrails and hardcoded personas.
   if (settings.systemOverride) {
-    return settings.systemInstruction || '';
+    const base = settings.systemInstruction || '';
+    return toolPrompt ? `${base}\n\n${toolPrompt}`.trim() : base;
   }
 
-  // If user disabled prompt injection entirely, return empty or raw instruction
+  // If user disabled prompt injection entirely, return raw instruction with armed tools if any
   if (!settings.promptInjectionEnabled) {
-    return settings.systemInstruction?.trim() || '';
+    const base = settings.systemInstruction?.trim() || '';
+    return toolPrompt ? `${base}\n\n${toolPrompt}`.trim() : base;
   }
 
-  // In Live Mode: apply raw system instruction without sanitization or wrapping
+  // In Live Mode: apply raw system instruction with armed tools
   if (settings.liveModePrompt) {
-    return settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+    const base = settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+    return toolPrompt ? `${base}\n\n${toolPrompt}`.trim() : base;
   }
 
   const baseInstruction = settings.systemInstruction?.trim() || DEFAULT_SYSTEM_INSTRUCTION;
@@ -56,6 +68,11 @@ export function getEffectiveSystemInstruction(settings: AppSettings, messages: M
       const { injectWorkspacePrompt } = require('./workspaceContext');
       fullInstruction = injectWorkspacePrompt(fullInstruction);
     } catch {}
+  }
+
+  // Append Live Tools Awareness so all models across all providers know what tools are enabled and that they are for their use
+  if (toolPrompt) {
+    fullInstruction = `${fullInstruction}\n\n${toolPrompt}`;
   }
 
   return fullInstruction;

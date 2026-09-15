@@ -373,4 +373,5 @@ export class PxpipeEngine {
 }
 
 export const pxpipeEngine = new PxpipeEngine();
+export const pipexEngine = pxpipeEngine;
 export default pxpipeEngine;
