@@ -10,6 +10,7 @@ export type ProviderType =
   | 'llamacpp' | 'lmstudio' | 'jan' | 'vllm' | 'sglang' | 'localai' | 'gpt4all'
   | 'local_openai_proxy' | 'unsloth' | 'webgpu' | 'webbrain_cloud' | 'azure_openai' | 'aws_bedrock'
   | 'minimax' | 'kimi' | 'alibaba' | 'z_ai' | 'zhipuai'
+  | 'nanogpt' | 'ovh'
   // New 2025/2026 providers
   | 'groq_free' | 'openrouter_free' | 'huggingface_free' | 'puter_free'
   | 'google_free' | 'mistral_free' | 'together_free' | 'cerebras_free'
@@ -155,7 +156,7 @@ export interface Message {
   generatedBy?: GeneratedBy;
   // Error state
   isError?: boolean;
-  errorType?: 'network' | 'api_key' | 'rate_limit' | 'context_overflow' | 'model_unavailable' | 'unknown';
+  errorType?: 'network' | 'api_key' | 'rate_limit' | 'budget_exhausted' | 'context_overflow' | 'model_unavailable' | 'unknown';
   errorRaw?: string;
   // Routing log
   routingEvents?: RoutingEvent[];
@@ -243,6 +244,8 @@ export interface AppSettings {
   lambdaaiApiKey?: string;
   nebiusApiKey?: string;
   ai21ApiKey?: string;
+  nanogptApiKey?: string;
+  ovhApiKey?: string;
   // New 2025 Providers
   chutesApiKey?: string;
   githubModelsToken?: string;

@@ -427,26 +427,30 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       />
 
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <aside className="w-screen max-w-2xl bg-[#0d1322] border-l border-slate-800 shadow-2xl flex flex-col transform transition-transform duration-300 ease-out">
+        <aside className="w-screen max-w-2xl bg-[#120305] border-l border-red-900/30 shadow-2xl flex flex-col transform transition-transform duration-300 ease-out">
           
           {/* Drawer Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-[#0d1322] shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-red-900/50 bg-gradient-to-r from-[#1a0407] via-[#120305] to-[#120305] shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 shrink-0 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shadow-[0_0_14px_-2px_rgba(239,68,68,0.5)]">
                 <Settings className="w-4 h-4" />
               </div>
-              <div>
-                <h2 className="text-sm font-semibold text-slate-100 font-mono tracking-wide">
-                  WormGPT System Console & Control Center
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-red-50 font-mono tracking-wide truncate">
+                  WormGPT System Console &amp; Control Center
                 </h2>
-                <p className="text-[11px] text-slate-400 font-mono">
-                  Active Model: <span className="text-indigo-300 font-semibold">{settings.aiProvider}</span> • Model Context & Tools
+                <p className="text-[11px] text-red-200/70 font-mono truncate">
+                  Active Model: <span className="text-red-300 font-semibold">{settings.aiProvider}</span>
+                  <span className="text-red-200/40"> • </span>
+                  <span className={activeToolsCount > 0 ? 'text-amber-300 font-semibold' : 'text-red-200/50'}>
+                    {activeToolsCount} tool{activeToolsCount === 1 ? '' : 's'} armed
+                  </span>
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+              className="p-1.5 shrink-0 rounded-lg text-red-200/70 hover:text-red-50 hover:bg-red-950/40 transition-colors"
               title="Close Settings (Escape)"
             >
               <X className="w-5 h-5" />
@@ -454,13 +458,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex border-b border-slate-800/80 bg-[#0d1322] px-6 gap-1 overflow-x-auto no-scrollbar shrink-0 text-xs font-mono font-medium">
+          <div className="flex border-b border-red-900/50 bg-[#120305] px-6 gap-1 overflow-x-auto no-scrollbar shrink-0 text-xs font-mono font-medium shadow-[0_6px_16px_-12px_rgba(239,68,68,0.8)]">
             <button
               onClick={() => setActiveTab('general')}
               className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'general'
-                  ? 'border-indigo-500 text-indigo-400 font-bold'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-red-500 text-red-300 font-bold shadow-[0_2px_14px_-4px_rgba(239,68,68,0.9)]'
+                  : 'border-transparent text-red-200/70 hover:text-red-100'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -471,8 +475,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               onClick={() => setActiveTab('providers')}
               className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'providers'
-                  ? 'border-indigo-500 text-indigo-400 font-bold'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-red-500 text-red-300 font-bold shadow-[0_2px_14px_-4px_rgba(239,68,68,0.9)]'
+                  : 'border-transparent text-red-200/70 hover:text-red-100'
               }`}
             >
               <Key className="w-3.5 h-3.5" />
@@ -483,21 +487,21 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               onClick={() => setActiveTab('mcp')}
               className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'mcp'
-                  ? 'border-emerald-500 text-emerald-400 font-bold'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-amber-500 text-amber-300 font-bold shadow-[0_2px_14px_-4px_rgba(245,158,11,0.9)]'
+                  : 'border-transparent text-red-200/70 hover:text-red-100'
               }`}
             >
-              <Server className="w-3.5 h-3.5 text-emerald-400" />
+              <Server className="w-3.5 h-3.5 text-amber-400" />
               Connected MCP
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
             </button>
 
             <button
               onClick={() => setActiveTab('tools')}
               className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'tools'
-                  ? 'border-indigo-500 text-indigo-400 font-bold'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-red-500 text-red-300 font-bold shadow-[0_2px_14px_-4px_rgba(239,68,68,0.9)]'
+                  : 'border-transparent text-red-200/70 hover:text-red-100'
               }`}
             >
               <Wrench className="w-3.5 h-3.5" />
@@ -508,11 +512,11 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               onClick={() => setActiveTab('pxpipe')}
               className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'pxpipe'
-                  ? 'border-emerald-500 text-emerald-400 font-bold'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-amber-500 text-amber-300 font-bold shadow-[0_2px_14px_-4px_rgba(245,158,11,0.9)]'
+                  : 'border-transparent text-red-200/70 hover:text-red-100'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
               pxpipe Arbitrage
             </button>
 
@@ -520,8 +524,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               onClick={() => setActiveTab('harness')}
               className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                 activeTab === 'harness'
-                  ? 'border-indigo-500 text-indigo-400 font-bold'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-red-500 text-red-300 font-bold shadow-[0_2px_14px_-4px_rgba(239,68,68,0.9)]'
+                  : 'border-transparent text-red-200/70 hover:text-red-100'
               }`}
             >
               <Cpu className="w-3.5 h-3.5" />
@@ -533,38 +537,38 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           </div>
 
           {/* Tab Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-slate-200 bg-[#0d1322]">
+          <div className="flex-1 overflow-y-auto scroll-smooth p-6 pb-16 space-y-6 custom-scrollbar text-red-100 bg-[#120305]">
             
             {/* 1. GENERAL TAB */}
             {activeTab === 'general' && (
               <div className="space-y-6">
                 {/* Active Session & Model Banner */}
-                <div className="p-4 rounded-xl bg-[#0f172a] border border-indigo-950/80 space-y-2">
+                <div className="p-4 rounded-xl bg-[#150306] border border-red-900/80 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-zinc-200">Current Execution Provider</span>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-semibold">
+                    <span className="text-xs font-mono font-bold text-red-100">Current Execution Provider</span>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-red-950 border border-red-700/60 text-red-300 font-semibold">
                       {settings.aiProvider.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <p className="text-xs text-red-200/70 leading-relaxed">
                     Routing active reasoning and code generation requests through {settings.aiProvider}. To switch providers, navigate to the Providers &amp; API Keys tab.
                   </p>
                 </div>
 
                 {/* Appearance */}
-                <div className="p-4 rounded-xl bg-[#0d1424] border border-indigo-950/70 space-y-3">
-                  <h3 className="text-xs font-mono font-semibold text-zinc-200 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-400" />
+                <div className="p-4 rounded-xl bg-[#120305] border border-red-900/70 space-y-3">
+                  <h3 className="text-xs font-mono font-semibold text-red-100 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-red-400" />
                     Appearance &amp; Typography
                   </h3>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[11px] font-mono text-zinc-400 block mb-1">Theme Palette</label>
+                      <label className="text-[11px] font-mono text-red-200/70 block mb-1">Theme Palette</label>
                       <select
                         value={settings.themePreference || 'charcoal'}
                         onChange={e => setSettings((s: AppSettings) => ({ ...s, themePreference: e.target.value as any }))}
-                        className="w-full p-2 bg-[#080d1a] border border-indigo-950/70 rounded-lg text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none font-mono"
+                        className="w-full p-2 bg-[#0a0103] border border-red-900/70 rounded-lg text-xs text-red-100 focus:border-red-500 focus:outline-none font-mono"
                       >
                         <option value="charcoal">Deep Charcoal with Indigo Accent</option>
                         <option value="slate">Dark Slate &amp; Violet</option>
@@ -573,11 +577,11 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-mono text-zinc-400 block mb-1">Typography Scale</label>
+                      <label className="text-[11px] font-mono text-red-200/70 block mb-1">Typography Scale</label>
                       <select
                         value={settings.fontSize || 'base'}
                         onChange={e => setSettings((s: AppSettings) => ({ ...s, fontSize: e.target.value as any }))}
-                        className="w-full p-2 bg-[#080d1a] border border-indigo-950/70 rounded-lg text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none font-mono"
+                        className="w-full p-2 bg-[#0a0103] border border-red-900/70 rounded-lg text-xs text-red-100 focus:border-red-500 focus:outline-none font-mono"
                       >
                         <option value="sm">Compact (14px)</option>
                         <option value="base">Standard (16px)</option>
@@ -588,19 +592,19 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 </div>
 
                 {/* Data & Logs */}
-                <div className="p-4 rounded-xl bg-[#0d1424] border border-indigo-950/70 space-y-3">
-                  <h3 className="text-xs font-mono font-semibold text-zinc-200 flex items-center gap-2">
-                    <Download className="w-4 h-4 text-indigo-400" />
+                <div className="p-4 rounded-xl bg-[#120305] border border-red-900/70 space-y-3">
+                  <h3 className="text-xs font-mono font-semibold text-red-100 flex items-center gap-2">
+                    <Download className="w-4 h-4 text-red-400" />
                     Conversation Logs &amp; Persistence
                   </h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <p className="text-xs text-red-200/70 leading-relaxed">
                     Export session histories, reasoning traces, and metadata to JSON, or import previous conversation files.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={onOpenExport}
-                      className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-semibold flex items-center gap-2 shadow-md transition-all"
+                      className="px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-semibold flex items-center gap-2 shadow-md transition-all"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Export / Import Session Logs
@@ -614,7 +618,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     <Trash2 className="w-4 h-4" />
                     Session &amp; Buffer Management
                   </h3>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-red-200/70">
                     Purge active memory buffer, dispose stale stream listeners, or clear thread contents safely.
                   </p>
 
@@ -632,7 +636,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     {onConfirmClear && (
                       <button
                         onClick={onConfirmClear}
-                        className="px-3 py-1.5 rounded-lg bg-[#080d1a] hover:bg-[#141d33] text-zinc-300 text-xs font-mono border border-indigo-950/70 transition-colors"
+                        className="px-3 py-1.5 rounded-lg bg-[#0a0103] hover:bg-[#1b0509] text-red-100/80 text-xs font-mono border border-red-900/70 transition-colors"
                       >
                         Clear Chat Messages
                       </button>
@@ -657,13 +661,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 {/* Search & Category Filter Header */}
                 <div className="space-y-2.5">
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-3 pointer-events-none" />
+                    <Search className="w-3.5 h-3.5 text-red-200/50 absolute left-3 top-3 pointer-events-none" />
                     <input
                       type="text"
                       value={providerSearch}
                       onChange={e => setProviderSearch(e.target.value)}
                       placeholder="Search providers (OpenRouter, Ollama, Perplexity, Together, xAI, Cerebras...)"
-                      className="w-full pl-9 pr-3 py-2 bg-[#070b14] border border-indigo-950/70 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-mono"
+                      className="w-full pl-9 pr-3 py-2 bg-[#0a0103] border border-red-900/70 rounded-lg text-xs text-red-100 placeholder-red-200/40 focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
 
@@ -682,8 +686,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         onClick={() => setProviderCategory(cat.id as any)}
                         className={`px-2.5 py-1 rounded-md text-[11px] transition-colors border ${
                           providerCategory === cat.id
-                            ? 'bg-indigo-600 text-white border-indigo-500 font-semibold'
-                            : 'bg-[#080d1a] text-zinc-400 border-indigo-950/70 hover:text-zinc-200'
+                            ? 'bg-red-600 text-white border-red-500 font-semibold'
+                            : 'bg-[#0a0103] text-red-200/70 border-red-900/70 hover:text-red-100'
                         }`}
                       >
                         {cat.label}
@@ -693,16 +697,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 </div>
 
                 {/* Real-time Verification Engine Banner */}
-                <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-800/40 text-xs text-zinc-300 flex items-center justify-between gap-3">
+                <div className="p-3 rounded-lg bg-red-950/30 border border-red-800/40 text-xs text-red-100/80 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <Zap className="w-4 h-4 text-amber-400 shrink-0" />
                     <span>
-                      <strong>Instant Endpoint Verification:</strong> Inputs ping provider <code className="text-indigo-300 font-mono">/models</code> endpoints on key entry.
+                      <strong>Instant Endpoint Verification:</strong> Inputs ping provider <code className="text-red-300 font-mono">/models</code> endpoints on key entry.
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] font-mono shrink-0">
-                    <span className="flex items-center gap-1 text-emerald-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Valid
+                    <span className="flex items-center gap-1 text-amber-400">
+                      <span className="w-2 h-2 rounded-full bg-amber-400"></span> Valid
                     </span>
                     <span className="flex items-center gap-1 text-rose-400">
                       <span className="w-2 h-2 rounded-full bg-rose-400"></span> Invalid
@@ -722,9 +726,9 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     const isLocal = conf?.category === 'local';
 
                     // Determine input field border and background color state
-                    let inputColorClasses = 'border-indigo-950/70 bg-[#080d1a] text-zinc-200 focus:border-indigo-500';
+                    let inputColorClasses = 'border-red-900/70 bg-[#0a0103] text-red-100 focus:border-red-500';
                     if (verifyStatus?.status === 'valid') {
-                      inputColorClasses = 'border-emerald-500/80 bg-emerald-950/20 text-emerald-200 focus:border-emerald-400 shadow-sm shadow-emerald-950/30';
+                      inputColorClasses = 'border-amber-500/80 bg-amber-950/20 text-amber-200 focus:border-amber-400 shadow-sm shadow-amber-950/30';
                     } else if (verifyStatus?.status === 'invalid') {
                       inputColorClasses = 'border-rose-500/80 bg-rose-950/20 text-rose-200 focus:border-rose-400 shadow-sm shadow-rose-950/30';
                     } else if (verifyStatus?.status === 'checking') {
@@ -736,35 +740,35 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         key={provider.id}
                         className={`p-4 rounded-xl border transition-all ${
                           isActive 
-                            ? 'bg-[#0f172a] border-indigo-500/80 shadow-md shadow-indigo-950/40' 
-                            : 'bg-[#0d1424] border-indigo-950/70 hover:border-indigo-800/60'
+                            ? 'bg-[#150306] border-red-500/80 shadow-md shadow-red-950/40' 
+                            : 'bg-[#120305] border-red-900/70 hover:border-red-800/60'
                         }`}
                       >
                         {/* Provider Header */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-xs font-mono font-bold text-zinc-100">{provider.name}</h4>
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#080d1a] border border-indigo-950 text-indigo-400">
+                              <h4 className="text-xs font-mono font-bold text-red-50">{provider.name}</h4>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#0a0103] border border-red-900 text-red-400">
                                 {provider.id}
                               </span>
                               {isLocal && (
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950/60 border border-blue-700/50 text-blue-300">
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/40 border border-amber-700/50 text-amber-300">
                                   LOCAL RUNTIME
                                 </span>
                               )}
                               {!provider.requiresApiKey && !isLocal && (
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-700/50 text-emerald-400">
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-700/50 text-amber-400">
                                   FREE / OPEN
                                 </span>
                               )}
                               {isActive && (
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-600 text-white font-bold flex items-center gap-1">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-600 text-white font-bold flex items-center gap-1">
                                   <Check className="w-3 h-3" /> ACTIVE ROUTE
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{provider.description}</p>
+                            <p className="text-xs text-red-200/70 mt-1 leading-relaxed">{provider.description}</p>
                           </div>
 
                           {/* Quick Actions: Switch Active Provider */}
@@ -772,9 +776,9 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                             <button
                               type="button"
                               onClick={() => setSettings((s: AppSettings) => ({ ...s, aiProvider: provider.id }))}
-                              className="px-2.5 py-1 rounded bg-[#080d1a] hover:bg-indigo-950/80 border border-indigo-950 hover:border-indigo-700 text-[11px] font-mono text-zinc-300 hover:text-white transition-colors shrink-0 flex items-center gap-1"
+                              className="px-2.5 py-1 rounded bg-[#0a0103] hover:bg-red-950/80 border border-red-900 hover:border-red-700 text-[11px] font-mono text-red-100/80 hover:text-white transition-colors shrink-0 flex items-center gap-1"
                             >
-                              <Play className="w-2.5 h-2.5 text-indigo-400" />
+                              <Play className="w-2.5 h-2.5 text-red-400" />
                               Activate
                             </button>
                           )}
@@ -784,7 +788,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         {provider.apiKeyField && (
                           <div className="space-y-1.5 pt-3">
                             <div className="flex items-center justify-between text-[11px] font-mono">
-                              <span className="text-zinc-400 flex items-center gap-2">
+                              <span className="text-red-200/70 flex items-center gap-2">
                                 <span>
                                   {provider.id === 'pollinations'
                                     ? 'Pollinations Bearer Token (Optional for dedicated limits)'
@@ -793,8 +797,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                     : `API Key (${keyField})`}
                                 </span>
                                 {verifyStatus?.status === 'valid' && (
-                                  <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-semibold flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Valid ({verifyStatus.latencyMs}ms)
+                                  <span className="px-2 py-0.5 rounded text-[10px] bg-amber-950/80 border border-amber-500/60 text-amber-300 font-semibold flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-amber-400" /> Valid ({verifyStatus.latencyMs}ms)
                                   </span>
                                 )}
                                 {verifyStatus?.status === 'invalid' && (
@@ -814,7 +818,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                   href={provider.docsUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-indigo-400 hover:underline flex items-center gap-1 text-[10px]"
+                                  className="text-red-400 hover:underline flex items-center gap-1 text-[10px]"
                                 >
                                   Docs <ExternalLink className="w-2.5 h-2.5" />
                                 </a>
@@ -842,7 +846,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => toggleShowKey(keyField)}
-                                  className="absolute right-2.5 top-2.5 text-zinc-500 hover:text-zinc-300"
+                                  className="absolute right-2.5 top-2.5 text-red-200/50 hover:text-red-100/80"
                                 >
                                   {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                 </button>
@@ -851,12 +855,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => runAutoVerify(provider.id, currentValue, isLocal ? conf?.baseUrl : undefined)}
-                                className="px-3.5 py-2 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-800/60 text-xs font-mono text-indigo-200 transition-colors shrink-0 flex items-center gap-1.5"
+                                className="px-3.5 py-2 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-800/60 text-xs font-mono text-red-200 transition-colors shrink-0 flex items-center gap-1.5"
                               >
                                 {verifyStatus?.status === 'checking' ? (
-                                  <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />
+                                  <RefreshCw className="w-3 h-3 animate-spin text-red-400" />
                                 ) : (
-                                  <Zap className="w-3 h-3 text-indigo-400" />
+                                  <Zap className="w-3 h-3 text-red-400" />
                                 )}
                                 Test Key
                               </button>
@@ -874,12 +878,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
 
                         {/* Local host daemon URL row for local runtimes */}
                         {isLocal && (
-                          <div className="pt-2 flex items-center justify-between text-[11px] font-mono text-zinc-400">
-                            <span>Default Endpoint: <code className="text-zinc-300">{conf?.baseUrl}</code></span>
+                          <div className="pt-2 flex items-center justify-between text-[11px] font-mono text-red-200/70">
+                            <span>Default Endpoint: <code className="text-red-100/80">{conf?.baseUrl}</code></span>
                             <button
                               type="button"
                               onClick={() => runAutoVerify(provider.id, currentValue, conf?.baseUrl)}
-                              className="text-indigo-400 hover:underline flex items-center gap-1"
+                              className="text-red-400 hover:underline flex items-center gap-1"
                             >
                               Ping Local Daemon
                             </button>
@@ -887,15 +891,15 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         )}
 
                         {/* Models catalog & Interactive Selection */}
-                        <div className="pt-3 space-y-2 border-t border-indigo-950/40 mt-2.5">
-                          <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
-                            <span className="flex items-center gap-1 font-semibold text-zinc-300">
-                              <Cpu className="w-3 h-3 text-indigo-400" />
+                        <div className="pt-3 space-y-2 border-t border-red-900/40 mt-2.5">
+                          <div className="flex items-center justify-between text-[11px] font-mono text-red-200/70">
+                            <span className="flex items-center gap-1 font-semibold text-red-100/80">
+                              <Cpu className="w-3 h-3 text-red-400" />
                               Select Model for {provider.name}:
                             </span>
                             {isActive && (
-                              <span className="text-indigo-300 font-bold">
-                                Active Model: <code className="text-emerald-400">{settings.model}</code>
+                              <span className="text-red-300 font-bold">
+                                Active Model: <code className="text-amber-400">{settings.model}</code>
                               </span>
                             )}
                           </div>
@@ -916,8 +920,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                   }}
                                   className={`text-[10px] font-mono px-2 py-1 rounded transition-all border flex items-center gap-1 ${
                                     isModelActive
-                                      ? 'bg-indigo-600 text-white border-indigo-400 font-bold shadow-sm shadow-indigo-900/50'
-                                      : 'bg-[#080d1a] border-indigo-950/80 text-zinc-300 hover:border-indigo-700 hover:text-white'
+                                      ? 'bg-red-600 text-white border-red-400 font-bold shadow-sm shadow-red-900/50'
+                                      : 'bg-[#0a0103] border-red-900/80 text-red-100/80 hover:border-red-700 hover:text-white'
                                   }`}
                                   title={`Switch chat to ${m.label} (${m.id})`}
                                 >
@@ -935,7 +939,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                               value={customModelInputs[provider.id] || ''}
                               onChange={e => setCustomModelInputs(prev => ({ ...prev, [provider.id]: e.target.value }))}
                               placeholder={`Enter custom model ID (e.g. ${provider.models?.[0]?.id || 'custom-model-id'})...`}
-                              className="flex-1 px-2.5 py-1.5 bg-[#070b14] border border-indigo-950/70 rounded-md text-[11px] font-mono text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+                              className="flex-1 px-2.5 py-1.5 bg-[#0a0103] border border-red-900/70 rounded-md text-[11px] font-mono text-red-100 placeholder-red-200/40 focus:outline-none focus:border-red-500"
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
                                   const customVal = (customModelInputs[provider.id] || '').trim();
@@ -962,7 +966,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                 }
                               }}
                               disabled={!(customModelInputs[provider.id] || '').trim()}
-                              className="px-2.5 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-600 disabled:bg-indigo-950/40 disabled:text-zinc-600 text-white text-[11px] font-mono transition-colors shrink-0 flex items-center gap-1"
+                              className="px-2.5 py-1.5 rounded-md bg-red-600/80 hover:bg-red-600 disabled:bg-red-950/40 disabled:text-red-200/40 text-white text-[11px] font-mono transition-colors shrink-0 flex items-center gap-1"
                             >
                               <Check className="w-3 h-3" />
                               Apply Custom
@@ -980,24 +984,24 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             {activeTab === 'mcp' && (
               <div className="space-y-4">
                 {/* Header Banner */}
-                <div className="p-4 rounded-xl bg-gradient-to-br from-[#0d1424] via-[#09101f] to-emerald-950/30 border border-emerald-600/30 space-y-2.5">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-[#120305] via-[#0e0204] to-amber-950/30 border border-amber-600/30 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Server className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-xs font-mono font-bold text-emerald-300">
+                      <Server className="w-4 h-4 text-amber-400" />
+                      <h3 className="text-xs font-mono font-bold text-amber-300">
                         Model Context Protocol (MCP) Remote Gateway
                       </h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-semibold">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/60 text-amber-300 font-semibold">
                         HTTPS STREAMABLE & SSE
                       </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/60 text-indigo-300 font-semibold">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-950/80 border border-red-500/60 text-red-300 font-semibold">
                         100 REMOTE SERVERS
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs text-zinc-300 leading-relaxed">
+                  <p className="text-xs text-red-100/80 leading-relaxed">
                     Connect remote HTTPS Model Context Protocol endpoints directly over Streamable HTTP and SSE without running local Node/Python processes. Expose real-time developer docs, search crawlers, databases, OSINT, and cloud tools directly to model reasoning.
                   </p>
 
@@ -1008,8 +1012,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                       onClick={() => setMcpViewMode('directory')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 transition-all ${
                         mcpViewMode === 'directory'
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/50'
-                          : 'bg-[#080d1a] text-zinc-400 hover:text-zinc-200 border border-indigo-950/70'
+                          ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/50'
+                          : 'bg-[#0a0103] text-red-200/70 hover:text-red-100 border border-red-900/70'
                       }`}
                     >
                       <Compass className="w-3.5 h-3.5" />
@@ -1020,8 +1024,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                       onClick={() => setMcpViewMode('active')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 transition-all ${
                         mcpViewMode === 'active'
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/50'
-                          : 'bg-[#080d1a] text-zinc-400 hover:text-zinc-200 border border-indigo-950/70'
+                          ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/50'
+                          : 'bg-[#0a0103] text-red-200/70 hover:text-red-100 border border-red-900/70'
                       }`}
                     >
                       <Server className="w-3.5 h-3.5" />
@@ -1032,8 +1036,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                       onClick={() => setMcpViewMode('export')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 transition-all ${
                         mcpViewMode === 'export'
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/50'
-                          : 'bg-[#080d1a] text-zinc-400 hover:text-zinc-200 border border-indigo-950/70'
+                          ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/50'
+                          : 'bg-[#0a0103] text-red-200/70 hover:text-red-100 border border-red-900/70'
                       }`}
                     >
                       <FileJson className="w-3.5 h-3.5" />
@@ -1046,22 +1050,22 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 {mcpViewMode === 'directory' && (
                   <div className="space-y-3.5 font-mono">
                     {/* Search and Quick Bundle Connect Bar */}
-                    <div className="p-3 rounded-xl bg-[#0d1424] border border-indigo-950/70 space-y-3">
+                    <div className="p-3 rounded-xl bg-[#120305] border border-red-900/70 space-y-3">
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <div className="relative flex-1">
-                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-red-200/70" />
                           <input
                             type="text"
                             value={mcpSearch}
                             onChange={e => setMcpSearch(e.target.value)}
                             placeholder="Search 100 MCPs (e.g. DeepWiki, Parallel Search, Context7, Supabase, Firecrawl)..."
-                            className="w-full pl-8 pr-3 py-2 bg-[#080d1a] border border-indigo-950/70 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+                            className="w-full pl-8 pr-3 py-2 bg-[#0a0103] border border-red-900/70 rounded-lg text-xs text-red-100 placeholder-red-200/40 focus:outline-none focus:border-red-500"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={handleQuickConnectZeroAuthBundle}
-                          className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shrink-0 shadow-md"
+                          className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shrink-0 shadow-md"
                           title="Connect top instant zero-auth endpoints with 1 click"
                         >
                           <Zap className="w-3.5 h-3.5 text-amber-300" />
@@ -1076,8 +1080,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                           onClick={() => setMcpCategory('all')}
                           className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors ${
                             mcpCategory === 'all'
-                              ? 'bg-indigo-600 text-white border-indigo-500'
-                              : 'bg-[#080d1a] text-zinc-400 border-indigo-950/80 hover:text-zinc-200'
+                              ? 'bg-red-600 text-white border-red-500'
+                              : 'bg-[#0a0103] text-red-200/70 border-red-900/80 hover:text-red-100'
                           }`}
                         >
                           All ({REMOTE_MCP_DIRECTORY.length})
@@ -1087,8 +1091,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                           onClick={() => setMcpCategory('zero_auth')}
                           className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors flex items-center gap-1 ${
                             mcpCategory === 'zero_auth'
-                              ? 'bg-emerald-600 text-white border-emerald-500'
-                              : 'bg-[#080d1a] text-emerald-400 border-emerald-950 hover:bg-emerald-950/30'
+                              ? 'bg-amber-600 text-white border-amber-500'
+                              : 'bg-[#0a0103] text-amber-400 border-amber-950 hover:bg-amber-950/30'
                           }`}
                         >
                           <Sparkles className="w-3 h-3" />
@@ -1104,8 +1108,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                               onClick={() => setMcpCategory(cat.id)}
                               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors ${
                                 mcpCategory === cat.id
-                                  ? 'bg-indigo-600 text-white border-indigo-500'
-                                  : 'bg-[#080d1a] text-zinc-400 border-indigo-950/80 hover:text-zinc-200'
+                                  ? 'bg-red-600 text-white border-red-500'
+                                  : 'bg-[#0a0103] text-red-200/70 border-red-900/80 hover:text-red-100'
                               }`}
                             >
                               {cat.label} ({count})
@@ -1116,13 +1120,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     </div>
 
                     {/* Results Count Banner */}
-                    <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400">
+                    <div className="flex items-center justify-between px-1 text-[11px] text-red-200/70">
                       <span>Showing {filteredMcpDirectory.length} remote MCP endpoints</span>
                       {mcpSearch && (
                         <button
                           type="button"
                           onClick={() => setMcpSearch('')}
-                          className="text-indigo-400 hover:text-indigo-300 underline"
+                          className="text-red-400 hover:text-red-300 underline"
                         >
                           Clear search
                         </button>
@@ -1142,22 +1146,22 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                             key={server.id}
                             className={`p-3.5 rounded-xl border space-y-2.5 transition-all flex flex-col justify-between ${
                               isAdded
-                                ? 'bg-gradient-to-br from-[#0c1527] to-emerald-950/20 border-emerald-500/50 shadow-sm'
-                                : 'bg-[#0d1424] border-indigo-950/70 hover:border-indigo-800/80'
+                                ? 'bg-gradient-to-br from-[#150306] to-amber-950/20 border-amber-500/50 shadow-sm'
+                                : 'bg-[#120305] border-red-900/70 hover:border-red-800/80'
                             }`}
                           >
                             {/* Card Top: Title, Badges */}
                             <div className="space-y-1.5">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <Server className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                  <h4 className="text-xs font-bold text-zinc-100 truncate" title={server.name}>
+                                  <Server className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                                  <h4 className="text-xs font-bold text-red-50 truncate" title={server.name}>
                                     {server.name}
                                   </h4>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                   {isZeroAuth ? (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-semibold">
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-950/80 border border-amber-500/60 text-amber-300 font-semibold">
                                       Zero-Auth
                                     </span>
                                   ) : (
@@ -1165,31 +1169,31 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                       {server.authType === 'oauth' ? 'OAuth' : 'API Key'}
                                     </span>
                                   )}
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-indigo-950/70 border border-indigo-800/50 text-indigo-300 uppercase">
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-950/70 border border-red-800/50 text-red-300 uppercase">
                                     {server.transport}
                                   </span>
                                 </div>
                               </div>
 
-                              <p className="text-[11px] text-zinc-300 leading-normal line-clamp-2">
+                              <p className="text-[11px] text-red-100/80 leading-normal line-clamp-2">
                                 {server.description}
                               </p>
                             </div>
 
                             {/* Endpoint URL row with quick copy */}
-                            <div className="space-y-2 pt-1 border-t border-indigo-950/60">
-                              <div className="flex items-center justify-between gap-1.5 bg-[#080d1a] px-2 py-1 rounded-md border border-indigo-950/70">
-                                <span className="text-[10px] text-zinc-400 truncate flex-1 font-mono">
+                            <div className="space-y-2 pt-1 border-t border-red-900/60">
+                              <div className="flex items-center justify-between gap-1.5 bg-[#0a0103] px-2 py-1 rounded-md border border-red-900/70">
+                                <span className="text-[10px] text-red-200/70 truncate flex-1 font-mono">
                                   {server.url}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => handleCopyText(server.url, `url-${server.id}`)}
-                                  className="text-zinc-400 hover:text-indigo-300 p-0.5 rounded transition-colors shrink-0"
+                                  className="text-red-200/70 hover:text-red-300 p-0.5 rounded transition-colors shrink-0"
                                   title="Copy Endpoint URL"
                                 >
                                   {copiedId === `url-${server.id}` ? (
-                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <Check className="w-3 h-3 text-amber-400" />
                                   ) : (
                                     <Copy className="w-3 h-3" />
                                   )}
@@ -1202,13 +1206,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                   {server.tools.slice(0, 3).map(tool => (
                                     <span
                                       key={tool}
-                                      className="px-1.5 py-0.5 rounded bg-indigo-950/40 text-[9px] text-indigo-300 border border-indigo-900/40 truncate max-w-[150px]"
+                                      className="px-1.5 py-0.5 rounded bg-red-950/40 text-[9px] text-red-300 border border-red-900/40 truncate max-w-[150px]"
                                     >
                                       {tool}
                                     </span>
                                   ))}
                                   {server.tools.length > 3 && (
-                                    <span className="px-1 py-0.5 rounded bg-indigo-950/20 text-[9px] text-zinc-500">
+                                    <span className="px-1 py-0.5 rounded bg-red-950/20 text-[9px] text-red-200/50">
                                       +{server.tools.length - 3} more
                                     </span>
                                   )}
@@ -1221,11 +1225,11 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleCopyText(JSON.stringify({ [server.id]: { type: server.transport === 'sse' ? 'sse' : 'http', url: server.url } }, null, 2), `json-${server.id}`)}
-                                    className="px-2 py-1 rounded bg-[#080d1a] hover:bg-indigo-950/60 border border-indigo-950 text-[10px] text-zinc-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                                    className="px-2 py-1 rounded bg-[#0a0103] hover:bg-red-950/60 border border-red-900 text-[10px] text-red-200/70 hover:text-red-300 flex items-center gap-1 transition-colors"
                                     title="Copy JSON block for client config"
                                   >
                                     {copiedId === `json-${server.id}` ? (
-                                      <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                      <Check className="w-2.5 h-2.5 text-amber-400" />
                                     ) : (
                                       <Code className="w-2.5 h-2.5" />
                                     )}
@@ -1236,7 +1240,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                       href={server.docsUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="p-1 rounded bg-[#080d1a] hover:bg-indigo-950/60 border border-indigo-950 text-zinc-400 hover:text-indigo-300 transition-colors"
+                                      className="p-1 rounded bg-[#0a0103] hover:bg-red-950/60 border border-red-900 text-red-200/70 hover:text-red-300 transition-colors"
                                       title="Open Documentation"
                                     >
                                       <ExternalLink className="w-2.5 h-2.5" />
@@ -1247,8 +1251,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                 {/* Connect Button */}
                                 {isAdded ? (
                                   <div className="flex items-center gap-1">
-                                    <span className="px-2 py-1 rounded text-[10px] bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-semibold flex items-center gap-1">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    <span className="px-2 py-1 rounded text-[10px] bg-amber-950/80 border border-amber-500/60 text-amber-300 font-semibold flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3 text-amber-400" />
                                       {isConnected ? 'Active' : 'Added'}
                                     </span>
                                     <button
@@ -1264,7 +1268,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleQuickAddMcpServer(server.url)}
-                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-sm"
+                                    className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-sm"
                                   >
                                     <Plus className="w-3 h-3" />
                                     Add Endpoint
@@ -1283,20 +1287,20 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 {mcpViewMode === 'active' && (
                   <div className="space-y-4">
                     {/* Add Custom MCP Server Form */}
-                    <div className="p-3.5 rounded-xl bg-[#0d1424] border border-indigo-950/70 space-y-2 font-mono">
-                      <span className="text-xs font-semibold text-zinc-200">Register Custom MCP Server Endpoint</span>
+                    <div className="p-3.5 rounded-xl bg-[#120305] border border-red-900/70 space-y-2 font-mono">
+                      <span className="text-xs font-semibold text-red-100">Register Custom MCP Server Endpoint</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={newMcpUrl}
                           onChange={e => setNewMcpUrl(e.target.value)}
                           placeholder="https://search.parallel.ai/mcp or http://localhost:3000/mcp"
-                          className="flex-1 px-3 py-2 bg-[#080d1a] border border-indigo-950/70 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+                          className="flex-1 px-3 py-2 bg-[#0a0103] border border-red-900/70 rounded-lg text-xs text-red-100 placeholder-red-200/40 focus:outline-none focus:border-red-500"
                         />
                         <button
                           type="button"
                           onClick={handleAddMcpServer}
-                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+                          className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Add Server
@@ -1312,9 +1316,9 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         const isChecking = status?.status === 'checking';
                         const isError = status && !status.valid && status.status !== 'checking' && status.status !== 'idle';
 
-                        let inputColorClasses = 'border-indigo-950/70 bg-[#080d1a] text-zinc-200';
+                        let inputColorClasses = 'border-red-900/70 bg-[#0a0103] text-red-100';
                         if (isConnected) {
-                          inputColorClasses = 'border-emerald-500/80 bg-emerald-950/20 text-emerald-200';
+                          inputColorClasses = 'border-amber-500/80 bg-amber-950/20 text-amber-200';
                         } else if (isError) {
                           inputColorClasses = 'border-rose-500/80 bg-rose-950/20 text-rose-200';
                         } else if (isChecking) {
@@ -1324,18 +1328,18 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         return (
                           <div
                             key={url}
-                            className="p-4 rounded-xl bg-[#0d1424] border border-indigo-950/70 space-y-3 font-mono"
+                            className="p-4 rounded-xl bg-[#120305] border border-red-900/70 space-y-3 font-mono"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0">
-                                <Server className="w-4 h-4 text-zinc-400 shrink-0" />
-                                <span className="text-xs font-bold text-zinc-200 truncate">{url}</span>
+                                <Server className="w-4 h-4 text-red-200/70 shrink-0" />
+                                <span className="text-xs font-bold text-red-100 truncate">{url}</span>
                               </div>
 
                               {/* Green / Red Badge */}
                               {isConnected && (
-                                <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-semibold flex items-center gap-1 shrink-0">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Connected ({status.latencyMs}ms) • {status.toolCount} tools
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-amber-950/80 border border-amber-500/60 text-amber-300 font-semibold flex items-center gap-1 shrink-0">
+                                  <CheckCircle2 className="w-3 h-3 text-amber-400" /> Connected ({status.latencyMs}ms) • {status.toolCount} tools
                                 </span>
                               )}
                               {isError && (

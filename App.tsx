@@ -1,13 +1,22 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { WormGPTProvider, useWormGPT } from './context/GlobalContext';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { ChatWindow } from './components/ChatWindow';
 import { InputBar } from './components/InputBar';
-import { SettingsModal } from './components/SettingsModal/SettingsModal';
-import { ModelSelectorModal } from './components/ModelSelectorModal';
-import { ActiveArsenalModal } from './components/ActiveArsenalModal';
 import { ConfirmModal, ExportImportModal, Toast } from './components/Modals';
+
+// Heavy panels are split out of the initial bundle and loaded the first time the
+// operator opens them, then kept mounted so their tab/filter state survives.
+const SettingsModal = lazy(() =>
+  import('./components/SettingsModal/SettingsModal').then(m => ({ default: m.SettingsModal }))
+);
+const ModelSelectorModal = lazy(() =>
+  import('./components/ModelSelectorModal').then(m => ({ default: m.ModelSelectorModal }))
+);
+const ActiveArsenalModal = lazy(() =>
+  import('./components/ActiveArsenalModal').then(m => ({ default: m.ActiveArsenalModal }))
+);
 import { NetworkTelemetryOverlay } from './components/NetworkTelemetryOverlay';
 import { PanicPurgeModal } from './components/PanicPurgeModal';
 import { SETTINGS_KEY, SESSIONS_KEY } from './constants';
@@ -33,6 +42,15 @@ const WormGPTApp: React.FC = () => {
   
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+
+  // Lazy panels mount on first open and stay mounted afterwards.
+  const [settingsMounted, setSettingsMounted] = useState(false);
+  const [modelSelectorMounted, setModelSelectorMounted] = useState(false);
+  const [arsenalMounted, setArsenalMounted] = useState(false);
+
+  useEffect(() => { if (isSettingsOpen) setSettingsMounted(true); }, [isSettingsOpen]);
+  useEffect(() => { if (isModelSelectorOpen) setModelSelectorMounted(true); }, [isModelSelectorOpen]);
+  useEffect(() => { if (isArsenalOpen) setArsenalMounted(true); }, [isArsenalOpen]);
 
   const [toast, setToast] = useState<{ visible: boolean; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({ 
     visible: false, 
@@ -127,26 +145,36 @@ const WormGPTApp: React.FC = () => {
         </div>
 
         {/* Dynamic Model Router & Selector Modal */}
-        <ModelSelectorModal 
-          isOpen={isModelSelectorOpen}
-          onClose={() => setIsModelSelectorOpen(false)}
-          targetMode={modelSelectorTarget}
-        />
+        {modelSelectorMounted && (
+          <Suspense fallback={null}>
+            <ModelSelectorModal 
+              isOpen={isModelSelectorOpen}
+              onClose={() => setIsModelSelectorOpen(false)}
+              targetMode={modelSelectorTarget}
+            />
+          </Suspense>
+        )}
 
         {/* Active Arsenal (100 Remote HTTPS MCP Server Catalog) */}
-        <ActiveArsenalModal 
-          isOpen={isArsenalOpen}
-          onClose={() => setIsArsenalOpen(false)}
-        />
+        {arsenalMounted && (
+          <Suspense fallback={null}>
+            <ActiveArsenalModal 
+              isOpen={isArsenalOpen}
+              onClose={() => setIsArsenalOpen(false)}
+            />
+          </Suspense>
+        )}
 
         {/* Settings & Model Harness Modal */}
-        <Suspense fallback={null}>
-          <SettingsModal 
-            onOpenExport={() => setIsExportOpen(true)}
-            onConfirmClear={() => setConfirmClearOpen(true)}
-            onConfirmReset={() => setConfirmResetOpen(true)}
-          />
-        </Suspense>
+        {settingsMounted && (
+          <Suspense fallback={null}>
+            <SettingsModal 
+              onOpenExport={() => setIsExportOpen(true)}
+              onConfirmClear={() => setConfirmClearOpen(true)}
+              onConfirmReset={() => setConfirmResetOpen(true)}
+            />
+          </Suspense>
+        )}
 
         {/* Export / Import Sessions Modal */}
         <ExportImportModal 

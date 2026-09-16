@@ -28,10 +28,19 @@ export interface PxpipeTokenStats {
   frameCount?: number;
 }
 
+export type PxpipeTheme =
+  | 'terminal-red'
+  | 'terminal-green'
+  | 'cyber-amber'
+  | 'dark-slate'
+  | 'clean-light'
+  | 'cyber-purple'
+  | 'matrix';
+
 export interface PxpipeRenderOptions {
   fontSize?: number;
   lineHeight?: number;
-  theme?: 'dark-slate' | 'terminal-green' | 'cyber-purple' | 'matrix';
+  theme?: PxpipeTheme;
   maxWidth?: number;
   title?: string;
 }
@@ -61,7 +70,54 @@ const SECRET_PATTERNS = [
   /(?:eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)/g, // JWT
 ];
 
-const THEME_PALETTES = {
+const THEME_PALETTES: Record<PxpipeTheme, {
+  bg: string; grid: string; headerBg: string; headerBorder: string;
+  headerAccent: string; textMain: string; textComment: string;
+  textKeyword: string; textError: string; dot: string; meta?: string; footer?: string;
+}> = {
+  // Matches the app's home screen (#050102 base, red neon accents).
+  'terminal-red': {
+    bg: '#0a0103',
+    grid: '#1a0407',
+    headerBg: '#1f0509',
+    headerBorder: '#4c0d12',
+    headerAccent: '#f87171',
+    textMain: '#fee2e2',
+    textComment: '#fca5a5',
+    textKeyword: '#f87171',
+    textError: '#fbbf24',
+    dot: '#ef4444',
+    meta: '#b91c1c',
+    footer: '#7f1d1d',
+  },
+  'cyber-amber': {
+    bg: '#0b0703',
+    grid: '#1d1405',
+    headerBg: '#1c1305',
+    headerBorder: '#4a3208',
+    headerAccent: '#fbbf24',
+    textMain: '#fef3c7',
+    textComment: '#fcd34d',
+    textKeyword: '#f59e0b',
+    textError: '#f87171',
+    dot: '#f59e0b',
+    meta: '#b45309',
+    footer: '#78350f',
+  },
+  'clean-light': {
+    bg: '#f8fafc',
+    grid: '#e2e8f0',
+    headerBg: '#e2e8f0',
+    headerBorder: '#94a3b8',
+    headerAccent: '#0f172a',
+    textMain: '#0f172a',
+    textComment: '#0f766e',
+    textKeyword: '#1d4ed8',
+    textError: '#b91c1c',
+    dot: '#0f172a',
+    meta: '#475569',
+    footer: '#475569',
+  },
   'dark-slate': {
     bg: '#070b12',
     grid: '#0d1627',
@@ -176,9 +232,11 @@ export class PxpipeEngine {
     const visualTokensPerFrame = Math.max(120, Math.ceil((width * height) / 3800));
     const estimatedVisualTokens = visualTokensPerFrame * frameCount;
 
-    const tokenSavingsPct = estimatedTextTokens > estimatedVisualTokens
-      ? Math.max(0, Math.min(85, Math.round(((estimatedTextTokens - estimatedVisualTokens) / estimatedTextTokens) * 100)))
-      : 62;
+    // Report the REAL reduction. Very short inputs genuinely cost more as pixels
+    // than as text, so the result is clamped at 0 (no fabricated savings) rather
+    // than reporting a fixed percentage the payload never delivered.
+    const rawSavingsPct = ((estimatedTextTokens - estimatedVisualTokens) / estimatedTextTokens) * 100;
+    const tokenSavingsPct = Math.max(0, Math.min(85, Math.round(rawSavingsPct)));
 
     return {
       originalChars: charCount,
@@ -204,8 +262,8 @@ export class PxpipeEngine {
       : (options || {});
 
     const title = opts.title || 'CONTEXT_ARCHIVE_PXPIPE';
-    const themeKey = opts.theme || 'dark-slate';
-    const palette = THEME_PALETTES[themeKey] || THEME_PALETTES['dark-slate'];
+    const themeKey = (opts.theme || 'terminal-red') as PxpipeTheme;
+    const palette = THEME_PALETTES[themeKey] || THEME_PALETTES['terminal-red'];
     const fontSize = opts.fontSize || 10;
     const lineHeight = opts.lineHeight || 14;
     const targetWidth = opts.maxWidth || 1024;
@@ -301,7 +359,7 @@ export class PxpipeEngine {
 
       // Header metadata
       ctx.font = '10px "Fira Code", monospace';
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = palette.meta || '#64748b';
       const metaStr = `CHARS: ${cleanText.length.toLocaleString()} | TOKENS: ~3.1 CHARS/TOK`;
       const metaWidth = ctx.measureText(metaStr).width;
       ctx.fillText(metaStr, targetWidth - padding - metaWidth, headerHeight / 2 + 4);
@@ -338,7 +396,7 @@ export class PxpipeEngine {
       ctx.stroke();
 
       ctx.font = '9px "Fira Code", monospace';
-      ctx.fillStyle = '#475569';
+      ctx.fillStyle = palette.footer || '#475569';
       ctx.fillText(`PXPIPE-V2 HIGH-DENSITY ARBITRAGE FRAME • SHA-256 HASH VERIFIED`, padding, frameHeight - 8);
       const pageStr = `PAGE ${frameIndex + 1} OF ${totalFrames}`;
       const pageWidth = ctx.measureText(pageStr).width;

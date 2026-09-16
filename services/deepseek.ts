@@ -98,12 +98,11 @@ class DeepSeekService {
 
     const effSys = getEffectiveSystemInstruction(settings, messages);
     if (effSys) {
-      const firstUserMsg = formattedMessages.find(m => m.role === 'user');
-      if (firstUserMsg) {
-        firstUserMsg.content = `${effSys}\n\n${firstUserMsg.content}`;
-      } else {
-        formattedMessages.unshift({ role: 'user', content: effSys });
-      }
+      // Inject through the API's native system channel. Prepending it onto the
+      // first user turn (the old behaviour) weakened instruction priority, broke
+      // provider-side prompt caching, and let the armed-tool catalog be pruned
+      // away along with old user turns.
+      formattedMessages.unshift({ role: 'system', content: effSys });
     }
 
     const requestBody = {

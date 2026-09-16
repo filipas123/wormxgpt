@@ -14,6 +14,7 @@ import { sessionSync, pluginRegistry, mcpService } from '../services';
 import { sessionStore } from '../services/sessionStore';
 import { providerRouter, initializeProviderRouter } from '../services/providerRouter';
 import { chatService } from '../services/chatService';
+import { classifyErrorText, type ClassifiedErrorType } from '../services/errorClassifier';
 import { providerRegistry } from '../services/providers/registry';
 import { mcpRegistry, SelectableArsenalTool } from '../services/mcp/registry';
 import { multiAgentOrchestrator } from '../services/multiAgent';
@@ -51,6 +52,7 @@ interface WormGPTContextType {
   setAutocomplete: React.Dispatch<React.SetStateAction<{ visible: boolean; type: 'model' | 'tool' | null; query: string; index: number; startIndex?: number }>>;
   handleSend: (overrideInput?: string) => void;
   handleAbort: () => void;
+  handleRetry: () => void;
   clearSessionBuffer: (targetSessionId?: string) => void;
   deleteSession: (targetSessionId: string) => Promise<void>;
   purgeAllSessions: () => Promise<void>;
@@ -295,6 +297,14 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
   const abortControllerRef = useRef<AbortController | null>(null);
   const sendLockRef = useRef(false);
   const lastSentAt = useRef(0);
+
+  // Streaming repaint throttle. Providers emit tokens far faster than the screen
+  // refreshes, and every token used to trigger a full sessions update. Coalescing
+  // to ~one paint per 50ms keeps long answers smooth without visible lag.
+  const streamPaintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamPaintLastAt = useRef(0);
+  const pendingStreamText = useRef<string | null>(null);
+  const STREAM_PAINT_INTERVAL_MS = 50;
 
   const handleAbort = useCallback(() => {
     if (abortControllerRef.current) {
@@ -542,18 +552,35 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
             controller.signal,
             (toolName) => setActiveToolCalling(toolName),
             () => setActiveToolCalling(null),
-            // Live streaming: repaint the model placeholder as tokens arrive
+            // Live streaming: repaint the model placeholder as tokens arrive,
+            // coalesced so a fast stream cannot outrun the renderer.
             (chunk) => {
               if (controller.signal.aborted) return;
               if (!chunk.text) return;
-              setSessions(prev => prev.map(s => s.id === activeSessionId ? {
-                ...s,
-                messages: s.messages.map((m, idx) =>
-                  idx === s.messages.length - 1 && (m.role === 'model' || m.role === 'assistant')
-                    ? { ...m, content: chunk.text }
-                    : m
-                )
-              } : s));
+              pendingStreamText.current = chunk.text;
+
+              const paintStreamedText = () => {
+                streamPaintTimer.current = null;
+                streamPaintLastAt.current = Date.now();
+                const text = pendingStreamText.current;
+                if (text === null || controller.signal.aborted) return;
+                pendingStreamText.current = null;
+                setSessions(prev => prev.map(s => s.id === activeSessionId ? {
+                  ...s,
+                  messages: s.messages.map((m, idx) =>
+                    idx === s.messages.length - 1 && (m.role === 'model' || m.role === 'assistant')
+                      ? { ...m, content: text }
+                      : m
+                  )
+                } : s));
+              };
+
+              const sinceLastPaint = Date.now() - streamPaintLastAt.current;
+              if (streamPaintTimer.current === null && sinceLastPaint >= STREAM_PAINT_INTERVAL_MS) {
+                paintStreamedText();
+              } else if (streamPaintTimer.current === null) {
+                streamPaintTimer.current = setTimeout(paintStreamedText, STREAM_PAINT_INTERVAL_MS - sinceLastPaint);
+              }
             }
           );
         }
@@ -566,15 +593,20 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
         const finalSources = responseChunk.sources || [];
         const finalToolInvocations = responseChunk.toolInvocations || [];
 
-        // Classify errors from response text
-        const isError = finalText.startsWith('CRITICAL_FAILURE:') || finalText.startsWith('[ERROR]');
-        const errorType = isError ? (
-          finalText.includes('401') || finalText.toLowerCase().includes('api key') ? 'api_key' :
-          finalText.includes('429') ? 'rate_limit' :
-          finalText.includes('context') ? 'context_overflow' :
-          finalText.includes('model') && finalText.includes('not found') ? 'model_unavailable' :
-          finalText.includes('fetch') || finalText.includes('network') ? 'network' : 'unknown'
-        ) : undefined;
+        // Classify provider failure prose via the shared classifier so a
+        // message that slipped past the router (e.g. from generateDirect) is
+        // still rendered as a themed ErrorPanel instead of raw paragraph.
+        const proseType = classifyErrorText(finalText);
+        const isError = finalText.startsWith('CRITICAL_FAILURE:') || finalText.startsWith('[ERROR]') || proseType !== null;
+        const errorType: ClassifiedErrorType = proseType
+          || (isError ? (
+            finalText.includes('401') || finalText.toLowerCase().includes('api key') ? 'api_key' :
+            finalText.includes('429') || finalText.toLowerCase().includes('rate limit') ? 'rate_limit' :
+            finalText.toLowerCase().includes('budget') || finalText.toLowerCase().includes('quota') ? 'budget_exhausted' :
+            finalText.includes('context') ? 'context_overflow' :
+            finalText.includes('model') && finalText.includes('not found') ? 'model_unavailable' :
+            finalText.includes('fetch') || finalText.includes('network') ? 'network' : 'unknown'
+          ) : ('unknown' as ClassifiedErrorType));
 
         // Build generatedBy whitebox metadata
         const usedModel = responseChunk.model || effectiveExecutionSettings.model;
@@ -611,13 +643,15 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
       } catch (streamError: any) {
         if (streamError.name === 'AbortError' || controller.signal.aborted) return;
         const errMsg = streamError.message || 'Unknown Error';
-        const errType = (
+        // Same classifier as the success path so thrown failures map to the
+        // correct remediation hint, not just "unknown".
+        const errType = classifyErrorText(errMsg) || (
           errMsg.includes('401') || errMsg.toLowerCase().includes('api key') ? 'api_key' :
           errMsg.includes('429') ? 'rate_limit' :
           errMsg.includes('context') ? 'context_overflow' :
           errMsg.includes('model') ? 'model_unavailable' :
           errMsg.includes('fetch') || errMsg.includes('network') ? 'network' : 'unknown'
-        );
+        ) as ClassifiedErrorType;
         setSessions(prev => prev.map(s => s.id === activeSessionId ? {
           ...s,
           messages: s.messages.map((m, idx) =>
@@ -631,6 +665,12 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
           )
         } : s));
       } finally {
+        // Drop any queued repaint: the final answer is committed right below.
+        if (streamPaintTimer.current !== null) {
+          clearTimeout(streamPaintTimer.current);
+          streamPaintTimer.current = null;
+        }
+        pendingStreamText.current = null;
         setIsStreaming(false);
         setActiveToolCalling(null);
         setActiveGeneratingModel(null);
@@ -644,6 +684,29 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
       sendLockRef.current = false;
     }
   }, [input, attachments, activeSession, activeSessionId, settings, setSessions, setIsStreaming]);
+
+  // 4b. Retry: drop the last failed model reply and regenerate from the same
+  // user turn. Used by the ErrorPanel's Retry button. No-op while streaming.
+  const handleRetry = useCallback(() => {
+    if (isStreamingRef.current || sendLockRef.current) return;
+    const session = sessions.find(s => s.id === activeSessionId);
+    if (!session) return;
+    const msgs = session.messages;
+    // Find the last user message; everything after it (the failed reply and any
+    // tool chatter) is discarded.
+    let lastUserIdx = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'user') { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx === -1) return;
+    const retryText = msgs[lastUserIdx].content;
+    setSessions(prev => prev.map(s => s.id === activeSessionId ? {
+      ...s,
+      messages: s.messages.slice(0, lastUserIdx)
+    } : s));
+    // Re-send outside the state updater; handleSend re-adds the user message.
+    setTimeout(() => handleSend(retryText), 0);
+  }, [sessions, activeSessionId, handleSend]);
 
   // 5. Global Keyboard Shortcuts
   useEffect(() => {
@@ -687,7 +750,7 @@ export const WormGPTProvider: React.FC<{ children: React.ReactNode; onSend?: (in
     isSettingsOpen, setIsSettingsOpen,
     isArsenalOpen, setIsArsenalOpen,
     autocomplete, setAutocomplete,
-    handleSend, handleAbort, clearSessionBuffer, deleteSession, purgeAllSessions, removeAttachment,
+    handleSend, handleAbort, handleRetry, clearSessionBuffer, deleteSession, purgeAllSessions, removeAttachment,
     deviceSpecs, deviceFingerprint, deviceDisplayId,
     arsenalTools, activeArsenalToolIds, toggleArsenalTool,
     enableAllZeroAuthTools, registerMcpEndpoint, executeArsenalTool

@@ -78,7 +78,7 @@ export const InputBar: React.FC<{
       const result = await pxpipeEngine.renderTextToImage(input, {
         fontSize: 11,
         lineHeight: 15,
-        theme: 'terminal-green',
+        theme: 'terminal-red',
         maxWidth: 1024,
         title: 'PROMPT_INPUT_COMPRESSION'
       });
@@ -87,7 +87,10 @@ export const InputBar: React.FC<{
       setPxpipeStats(result.stats);
       const frameCount = newImages.length;
       const escapeNotice = result.preservedPlainText ? `\n${result.preservedPlainText}\n` : '';
-      setInput(`[PXPIPE ARBITRAGE ATTACHED // ${frameCount} FRAME${frameCount > 1 ? 'S' : ''} - SAVED ${result.stats.tokenSavingsPct}% TOKENS]${escapeNotice}Analyze the attached dense context and answer thoroughly.`);
+      const savingsLabel = result.stats.tokenSavingsPct > 0
+        ? `SAVED ~${result.stats.tokenSavingsPct}% TOKENS`
+        : 'NO NET SAVING (input too small)';
+      setInput(`[PXPIPE ARBITRAGE ATTACHED // ${frameCount} FRAME${frameCount > 1 ? 'S' : ''} - ${savingsLabel}]${escapeNotice}Analyze the attached dense context and answer thoroughly.`);
     } catch (err) {
       console.error('pxpipe compression failed:', err);
     } finally {
@@ -371,7 +374,9 @@ export const InputBar: React.FC<{
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-red-500 shrink-0" />
               <span>
-                <strong>pxpipe Arbitrage:</strong> Compressed {pxpipeStats.originalChars} chars → ~{pxpipeStats.estimatedVisualTokens} visual tokens (<strong className="text-red-200">-{pxpipeStats.tokenSavingsPct}% reduction</strong>)
+                <strong>pxpipe Arbitrage:</strong> Compressed {pxpipeStats.originalChars} chars → ~{pxpipeStats.estimatedVisualTokens} visual tokens ({pxpipeStats.tokenSavingsPct > 0
+                  ? <strong className="text-amber-300">-{pxpipeStats.tokenSavingsPct}% reduction</strong>
+                  : <strong className="text-red-300/80">no net reduction (input too small)</strong>})
               </span>
             </div>
             <button

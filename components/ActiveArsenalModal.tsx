@@ -90,11 +90,11 @@ export const ActiveArsenalModal: React.FC<ActiveArsenalModalProps> = ({ isOpen, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-5xl h-[90vh] max-h-[850px] bg-[#0d1322] border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-200 font-sans"
+        className="w-full max-w-5xl h-[90vh] max-h-[850px] bg-[#120305] border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-200 font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-[#0a0f1d] shrink-0">
+        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-[#0e0204] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">
               <Wrench className="w-5 h-5" />
@@ -133,7 +133,7 @@ export const ActiveArsenalModal: React.FC<ActiveArsenalModalProps> = ({ isOpen, 
         </div>
 
         {/* Toolbar: Search + Category Pills */}
-        <div className="p-4 border-b border-slate-800/80 bg-[#0c1220] space-y-3 shrink-0">
+        <div className="p-4 border-b border-slate-800/80 bg-[#150306] space-y-3 shrink-0">
           {/* Search Bar */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -285,7 +285,7 @@ export const ActiveArsenalModal: React.FC<ActiveArsenalModalProps> = ({ isOpen, 
 
           {/* Test & Live Execution Panel (Right Drawer) */}
           {testTool && (
-            <div className="w-96 border-l border-slate-800 bg-[#090d18] p-4 flex flex-col justify-between overflow-y-auto custom-scrollbar shrink-0">
+            <div className="w-96 border-l border-slate-800 bg-[#0a0103] p-4 flex flex-col justify-between overflow-y-auto custom-scrollbar shrink-0">
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ export const ActiveArsenalModal: React.FC<ActiveArsenalModalProps> = ({ isOpen, 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-800 bg-[#0a0f1d] flex items-center justify-between text-xs text-slate-400 shrink-0 font-mono">
+        <div className="px-6 py-3 border-t border-slate-800 bg-[#0e0204] flex items-center justify-between text-xs text-slate-400 shrink-0 font-mono">
           <span>Active Arsenal: {activeCount} tools armed for model invocation</span>
           <button
             onClick={onClose}

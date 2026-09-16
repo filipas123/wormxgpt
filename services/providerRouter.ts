@@ -1,6 +1,7 @@
 import { AppSettings, Message, ProviderType, StreamChunk, ProviderHealthStats, ToolInvocation } from '../types';
 import { FALLBACK_CHAIN, FREE_MODEL_DEFAULTS, FREE_PROVIDERS, FREE_TIER_PROVIDERS } from '../constants';
 import { telemetryService } from './telemetry';
+import { classifyErrorText, isFatalForFallback, type ClassifiedErrorType } from './errorClassifier';
 
 // ── Provider Service Interface ───────────────────────────────────────────────
 export interface ProviderService {
@@ -68,6 +69,8 @@ export class ProviderRouter {
       featherless: 'featherlessApiKey', lambdaai: 'lambdaaiApiKey', nebius: 'nebiusApiKey',
       tinyfish: 'tinyfishApiKey',
       llm7: 'llm7ApiKey',
+      nanogpt: 'nanogptApiKey',
+      ovh: 'ovhApiKey',
       puter: 'puterApiKey',
     };
     return map[provider] || null;
@@ -211,6 +214,7 @@ export class ProviderRouter {
     }
 
     let lastErrorMsg = '';
+    let lastFatalType: ClassifiedErrorType | null = null;
     const onChunk = opts?.onChunk;
 
     for (let i = 0; i < chain.length; i++) {
@@ -249,6 +253,25 @@ export class ProviderRouter {
           // them separately instead of dropping everything but the last chunk.
           const streamedTools: ToolInvocation[] = [];
           let streamedSources: { title: string; url: string }[] | undefined;
+          let proseDetected = false;
+          // Head buffer: the first paint is withheld until ~200 chars have
+          // accumulated or the stream ends, so the opening fragment of a
+          // failure notice ("The API key used for this requ") — which cannot
+          // be classified until complete — is never painted and then replaced.
+          // Real answers lose at most one paint tick.
+          const PROBE_BUFFER_CHARS = 200;
+          let probeBuffer = '';
+          let probeFlushed = false;
+          const flushProbe = () => {
+            if (probeFlushed || !probeBuffer) return;
+            probeFlushed = true;
+            const buffered = probeBuffer;
+            probeBuffer = '';
+            if (buffered) {
+              onChunk({ text: buffered, images: [] } as StreamChunk);
+              produced = true;
+            }
+          };
           try {
             for await (const chunk of service.streamChat(effectiveSettings, messages, signal)) {
               if (chunk.toolInvocations && chunk.toolInvocations.length > 0) {
@@ -263,14 +286,41 @@ export class ProviderRouter {
               }
               if (chunk.text || (chunk.images && chunk.images.length > 0)) {
                 last = chunk;
-                onChunk(chunk);
-                if (chunk.text) produced = true;
+                // Gateways that stream their failure notice ("The API key ...
+                // reached its budget") used to paint it into the chat bubble in
+                // real time. Classify BEFORE any paint: while the head buffer
+                // is open, text accumulates silently; once flushed, any chunk
+                // that classifies as error prose stops the stream entirely.
+                if (chunk.text && classifyErrorText(chunk.text)) {
+                  proseDetected = true;
+                  probeBuffer = '';
+                  break;
+                }
+                if (chunk.text && !probeFlushed) {
+                  probeBuffer += chunk.text;
+                  if (probeBuffer.length >= PROBE_BUFFER_CHARS) flushProbe();
+                } else {
+                  flushProbe();
+                  onChunk(chunk);
+                  if (chunk.text) produced = true;
+                }
               }
             }
           } catch (streamErr: any) {
             if (streamErr.name === 'AbortError' || signal?.aborted) throw streamErr;
             // Remember the stream failure; decide below whether to retry blocking.
             last = null;
+          }
+          // Stream ended clean: release whatever the probe was still holding.
+          if (!proseDetected) flushProbe();
+          // Error prose streamed mid-flight: abandon everything this provider
+          // emitted and fall through to the next one, exactly like a throw.
+          if (proseDetected) {
+            lastErrorMsg = (last?.text || 'provider failure notice').slice(0, 300);
+            lastFatalType = classifyErrorText(lastErrorMsg);
+            this.recordFailure(provider, `streamed error prose: ${lastFatalType}`);
+            console.warn(`[ProviderRouter] ${provider} streamed error prose (${lastFatalType}); trying next provider.`);
+            continue;
           }
           result = last ? { ...last } : { text: '', images: [] };
           if (streamedTools.length > 0) {
@@ -295,6 +345,20 @@ export class ProviderRouter {
         }
 
         if (result && (result.text || (result.images && result.images.length > 0) || (result.toolInvocations && result.toolInvocations.length > 0))) {
+          // Gate: some gateways return provider failure prose as a 200 answer
+          // ("The API key ... has reached its budget. Please raise the key
+          // budget..."). Without this check the prose is recorded as a success,
+          // the fallback chain never engages, and the user gets an unstyled
+          // error paragraph as their chat answer.
+          const proseFailure = classifyErrorText(result.text);
+          if (proseFailure) {
+            lastErrorMsg = result.text.slice(0, 300);
+            lastFatalType = proseFailure;
+            this.recordFailure(provider, `error prose: ${proseFailure}`);
+            console.warn(`[ProviderRouter] ${provider} returned error prose (${proseFailure}); trying next provider.`);
+            continue;
+          }
+
           this.recordSuccess(provider, Date.now() - start);
           return result;
         }
@@ -305,6 +369,8 @@ export class ProviderRouter {
         lastErrorMsg = err?.message || 'Unknown error';
         this.recordFailure(provider, lastErrorMsg);
         console.warn(`[ProviderRouter] ${provider} failed: ${lastErrorMsg}`);
+        const thrownFailure = classifyErrorText(lastErrorMsg);
+        if (thrownFailure) lastFatalType = thrownFailure;
         const nextProvider = chain[i + 1]?.provider;
         if (nextProvider) {
           telemetryService.recordFallback(provider, nextProvider, lastErrorMsg);
@@ -312,7 +378,19 @@ export class ProviderRouter {
       }
     }
 
-    // Absolute fallback: try standard Pollinations synchronous direct handler
+    // Fatal failures (invalid key / empty wallet / oversized context) cannot be
+    // fixed by another provider, so skip the remaining chain and the absolute
+    // fallback — they would just repeat the same failure with fresh latency.
+    if (lastFatalType && isFatalForFallback(lastFatalType)) {
+      return {
+        text: `[${lastFatalType.toUpperCase()}] ${lastErrorMsg}`,
+        images: [],
+      };
+    }
+
+    // Absolute fallback: try standard Pollinations synchronous direct handler.
+    // Its answer is gated too: an out-of-budget Pollinations body used to slip
+    // through this last resort and reach the chat as a normal answer.
     try {
       const { pollinationsService } = await import('./pollinations');
       const fallbackResult = await pollinationsService.generateChat(
@@ -320,8 +398,11 @@ export class ProviderRouter {
         messages,
         signal
       );
-      if (fallbackResult && fallbackResult.text) {
+      if (fallbackResult && fallbackResult.text && !classifyErrorText(fallbackResult.text)) {
         return fallbackResult;
+      }
+      if (fallbackResult?.text) {
+        lastErrorMsg = fallbackResult.text.slice(0, 300);
       }
     } catch {}
 
@@ -367,6 +448,15 @@ export class ProviderRouter {
           if (chunk.sources) sources = chunk.sources;
         }
         result = { text, images, sources };
+      }
+      // Same prose gate as the fallback path: a direct call (used by the tool
+      // loop's inner turns) that comes back as a budget/auth notice must not be
+      // recorded as a success — the loop would otherwise feed the failure prose
+      // back in as if it were tool evidence.
+      const proseFailure = classifyErrorText(result.text);
+      if (proseFailure) {
+        this.recordFailure(provider, `error prose: ${proseFailure}`);
+        throw new Error(result.text.slice(0, 300));
       }
       this.recordSuccess(provider, Date.now() - start);
       return result;

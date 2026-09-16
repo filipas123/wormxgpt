@@ -87,7 +87,7 @@ export const ChatWindow: React.FC<{
 }> = ({ onOpenModelSelector }) => {
   const {
     activeSession, settings, isStreaming, activeToolCalling, setInput,
-    activeGeneratingModel, activeGeneratingProvider
+    activeGeneratingModel, activeGeneratingProvider, handleRetry
   } = useWormGPT();
   const scrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef<boolean>(false);
@@ -316,6 +316,7 @@ export const ChatWindow: React.FC<{
                   key={`${msg.timestamp || i}-${i}`}
                   message={msg}
                   settings={settings}
+                  onRetry={handleRetry}
                   isGenerating={
                     (isStreaming || revealLimit !== null) &&
                     i === displayMessages.length - 1 &&

@@ -17,9 +17,10 @@ export const FALLBACK_CHAIN: ProviderType[] = [
 export const FREE_MODEL_DEFAULTS: Partial<Record<ProviderType, string>> = {
   pollinations: 'openai',
   puter: 'gpt-4o-mini',
-  llm7: 'llama-3.1-8b-instruct',
+  llm7: 'gpt-5.6-luna',
+  nanogpt: 'openai/gpt-5.6-luna',
   wisgate: 'gemini-2.5-flash',
-  uncloseai: 'hermes',
+  uncloseai: 'hermes-3-llama-70b',
   groq: 'llama-3.3-70b-versatile',
   cerebras: 'llama-3.3-70b',
   sambanova: 'Meta-Llama-3.3-70B-Instruct',
@@ -28,7 +29,7 @@ export const FREE_MODEL_DEFAULTS: Partial<Record<ProviderType, string>> = {
 };
 
 // ── Provider API Key Requirements ────────────────────────────────────────────
-export const FREE_PROVIDERS: ProviderType[] = ['pollinations', 'puter', 'llm7', 'wisgate', 'uncloseai'];
+export const FREE_PROVIDERS: ProviderType[] = ['pollinations', 'puter', 'llm7', 'wisgate', 'uncloseai', 'nanogpt'];
 export const FREE_TIER_PROVIDERS: ProviderType[] = ['groq', 'cerebras', 'sambanova', 'siliconflow', 'huggingface'];
 
 
@@ -191,7 +192,6 @@ export const MODEL_OPTIONS: ModelOption[] = [
   // Specialized & Task-Specific Models
   { label: 'Groq LMA 3 Gro 70B (Function Calling)', value: 'meta-llama/llama-3-groq-70b-tool-use', provider: 'groq' },
   { label: 'Groq LMA 3 Grock 8B (Function Calling)', value: 'meta-llama/llama-3-groq-8b-tool-use', provider: 'groq' },
-  { label: 'Groq DeepSeek R1 Distill 70B (Chain of Thought)', value: 'deepseek/deepseek-r1-distill-llama-70b', provider: 'groq' },
   { label: 'Groq LLaMA Guard 4 12B (Safety)', value: 'meta-llama/llama-guard-4-12b', provider: 'groq' },
   { label: 'Groq LLaMA Prompt Guard 2 22M', value: 'meta-llama/llama-prompt-guard-2-22m', provider: 'groq' },
   { label: 'Groq Prompt Guard 2 86M', value: 'meta-llama/llama-prompt-guard-2-86m', provider: 'groq' },
@@ -638,16 +638,16 @@ export const MODEL_OPTIONS: ModelOption[] = [
   { label: 'HuggingFace Zephyr 7B Beta', value: 'HuggingFaceH4/zephyr-7b-beta', provider: 'huggingface' },
 
   // ── DEEP INFRA ───────────────────────────────────────────────────────────
-  { label: 'DeepInfra LLaMA 3.3 70B Instruct', value: 'meta-llama/Llama-3.3-70B-Instruct', provider: 'deepinfra' },
-  { label: 'DeepInfra LLaMA 3.1 405B Instruct', value: 'meta-llama/Meta-Llama-3.1-405B-Instruct', provider: 'deepinfra' },
-  { label: 'DeepInfra DeepSeek R1 (671B)', value: 'deepseek-ai/DeepSeek-R1', provider: 'deepinfra' },
-  { label: 'DeepInfra DeepSeek V3 (685B)', value: 'deepseek-ai/DeepSeek-V3', provider: 'deepinfra' },
-  { label: 'DeepInfra Qwen3 235B A22B', value: 'Qwen/Qwen3-235B-A22B', provider: 'deepinfra' },
-  { label: 'DeepInfra Qwen3 32B', value: 'Qwen/Qwen3-32B', provider: 'deepinfra' },
-  { label: 'DeepInfra Mistral 7B Instruct v0.3', value: 'mistralai/Mistral-7B-Instruct-v0.3', provider: 'deepinfra' },
-  { label: 'DeepInfra Gemma 3 27B IT', value: 'google/gemma-3-27b-it', provider: 'deepinfra' },
-  { label: 'DeepInfra Phi-4 (Microsoft)', value: 'microsoft/phi-4', provider: 'deepinfra' },
-  { label: 'DeepInfra WizardLM-2 8x22B', value: 'microsoft/WizardLM-2-8x22B', provider: 'deepinfra' },
+  { label: 'DeepInfra DeepSeek V4 Pro (Frontier)', value: 'deepseek-ai/DeepSeek-V4-Pro', provider: 'deepinfra' },
+  { label: 'DeepInfra DeepSeek V4 Flash (Fast)', value: 'deepseek-ai/DeepSeek-V4-Flash-0731', provider: 'deepinfra' },
+  { label: 'DeepInfra DeepSeek V3.2', value: 'deepseek-ai/DeepSeek-V3.2', provider: 'deepinfra' },
+  { label: 'DeepInfra Kimi K3 (Reasoning)', value: 'moonshotai/Kimi-K3', provider: 'deepinfra' },
+  { label: 'DeepInfra Kimi K2.6', value: 'moonshotai/Kimi-K2.6', provider: 'deepinfra' },
+  { label: 'DeepInfra GLM 5.3 (Code)', value: 'zai-org/GLM-5.3', provider: 'deepinfra' },
+  { label: 'DeepInfra GLM 5.3 Flash (Fast)', value: 'zai-org/GLM-5.3-Flash', provider: 'deepinfra' },
+  { label: 'DeepInfra Qwen 3.8 Max', value: 'Qwen/Qwen3.8-Max', provider: 'deepinfra' },
+  { label: 'DeepInfra Qwen 3 Next 80B', value: 'Qwen/Qwen3-Next-80B-A3B-Instruct', provider: 'deepinfra' },
+  { label: 'DeepInfra Llama 4 Scout 17B', value: 'meta-llama/Llama-4-Scout-17B-16E-Instruct', provider: 'deepinfra' },
 
   // ── NOVITA AI ────────────────────────────────────────────────────────────
   { label: 'Novita LLaMA 3.3 70B Instruct', value: 'meta-llama/llama-3.3-70b-instruct', provider: 'novita' },
@@ -685,20 +685,68 @@ export const MODEL_OPTIONS: ModelOption[] = [
   { label: 'Nebius Gemma 3 27B IT', value: 'google/gemma-3-27b-it', provider: 'nebius' },
   { label: 'Nebius Phi-4 (Microsoft)', value: 'microsoft/phi-4', provider: 'nebius' },
 
+  // ── OVHCLOUD AI ENDPOINTS (Sovereign EU, verified live) ───────────────────
+  { label: 'OVH Qwen 3.8 27B', value: 'Qwen3.8-27B', provider: 'ovh' },
+  { label: 'OVH Qwen 3.6 27B', value: 'Qwen3.6-27B', provider: 'ovh' },
+  { label: 'OVH Qwen 3.5 397B A17B (Frontier MoE)', value: 'Qwen3.5-397B-A17B', provider: 'ovh' },
+  { label: 'OVH Qwen 3.5 9B (Fast)', value: 'Qwen3.5-9B', provider: 'ovh' },
+  { label: 'OVH Qwen 3 Coder 30B A3B', value: 'Qwen3-Coder-30B-A3B-Instruct', provider: 'ovh' },
+  { label: 'OVH Qwen 3 32B', value: 'Qwen3-32B', provider: 'ovh' },
+  { label: 'OVH Llama 3.3 70B Instruct', value: 'Meta-Llama-3_3-70B-Instruct', provider: 'ovh' },
+  { label: 'OVH GPT-OSS 120B (OpenAI Open Weights)', value: 'gpt-oss-120b', provider: 'ovh' },
+  { label: 'OVH GPT-OSS 20B (Fast)', value: 'gpt-oss-20b', provider: 'ovh' },
+  { label: 'OVH Mistral Small 3.2 24B', value: 'Mistral-Small-3.2-24B-Instruct-2506', provider: 'ovh' },
+  { label: 'OVH Mistral Nemo 2407', value: 'Mistral-Nemo-Instruct-2407', provider: 'ovh' },
+  { label: 'OVH Mistral 7B Instruct', value: 'Mistral-7B-Instruct-v0.3', provider: 'ovh' },
   // ── AI21 LABS ─────────────────────────────────────────────────────────────
   { label: 'AI21 Jamba 1.6 Large (Efficient Long)', value: 'jamba-1.6-large', provider: 'ai21' },
   { label: 'AI21 Jamba 1.6 Mini (Fast Edge)', value: 'jamba-1.6-mini', provider: 'ai21' },
 
-  // ── LLM7 (2026 Free & Paid Models) ─────────────────────────────────────────
-  { label: 'LLM7 Bidara (Specialized)', value: 'bidara', provider: 'llm7', isFree: true },
-  { label: 'LLM7 Codestral 2501 (Code)', value: 'codestral-2501', provider: 'llm7', isFree: true },
-  { label: 'LLM7 DeepSeek R1 0528 (Reasoning)', value: 'deepseek-r1-0528', provider: 'llm7', isFree: true },
-  { label: 'LLM7 GPT o3 2025-04-16 (Reasoning)', value: 'gpt-o3-2025-04-16', provider: 'llm7', isFree: true },
-  { label: 'LLM7 LLaMA 3.1 8B Instruct FP8', value: 'llama-3.1-8b-instruct-fp8', provider: 'llm7', isFree: true },
-  { label: 'LLM7 LLaMA 4 Scout 17B 16E', value: 'llama-4-scout-17b-16e-instruct', provider: 'llm7', isFree: true },
-  { label: 'LLM7 Mistral Large 2411 (Frontier)', value: 'mistral-large-2411', provider: 'llm7', isFree: true },
-  { label: 'LLM7 Mistral Small 2503 (Efficient)', value: 'mistral-small-2503', provider: 'llm7', isFree: true },
-  { label: 'LLM7 Phi-4 Multimodal Instruct', value: 'phi-4-multimodal-instruct', provider: 'llm7', isFree: true },
+  // ── LLM7 (verified live catalog: api.llm7.io) ────────────────────────────
+  { label: 'LLM7 GPT-5.6 Sol (Flagship Thinking)', value: 'gpt-5.6-sol', provider: 'llm7', isFree: true },
+  { label: 'LLM7 GPT-5.6 Terra (Balanced)', value: 'gpt-5.6-terra', provider: 'llm7', isFree: true },
+  { label: 'LLM7 GPT-5.6 Luna (Fast)', value: 'gpt-5.6-luna', provider: 'llm7', isFree: true },
+  { label: 'LLM7 GPT-5.5 (Frontier)', value: 'gpt-5.5', provider: 'llm7', isFree: true },
+  { label: 'LLM7 GPT-6 Astra (Next-Gen)', value: 'gpt-6-astra', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Claude Sonnet 5 (Reasoning)', value: 'claude-sonnet-5', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Claude Haiku 4.5 (Fast)', value: 'claude-haiku-4-5', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Claude Opus 4.8 (Frontier)', value: 'claude-opus-4-8', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Gemini 3 Flash (Speed)', value: 'gemini-3-flash', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Gemini 3.7 Flash', value: 'gemini-3.7-flash', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Grok 4.6 (Frontier)', value: 'grok-4.6', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Kimi K3 (Moonshot Reasoning)', value: 'kimi-k3', provider: 'llm7', isFree: true },
+  { label: 'LLM7 GLM 5.3 (Code & Reasoning)', value: 'glm-5.3', provider: 'llm7', isFree: true },
+  { label: 'LLM7 GLM 5.3 Flash (Fast Code)', value: 'glm-5.3-flash', provider: 'llm7', isFree: true },
+  { label: 'LLM7 DeepSeek V4 Pro (Reasoning)', value: 'deepseek-v4-pro', provider: 'llm7', isFree: true },
+  { label: 'LLM7 DeepSeek V4 Flash (Fast)', value: 'deepseek-v4-flash:0731', provider: 'llm7', isFree: true },
+  { label: 'LLM7 MiniMax M2.7', value: 'minimax-m2.7', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Codestral (Code)', value: 'codestral-latest', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Llama 4 Maverick (Open Weights)', value: 'llama-4-maverick', provider: 'llm7', isFree: true },
+  { label: 'LLM7 Inkling (Reasoning)', value: 'Inkling', provider: 'llm7', isFree: true },
+  // ── NANOGPT (600+ model gateway, nano-gpt.com) ───────────────────────────
+  { label: 'NanoGPT GPT-5.6 Luna (Fast)', value: 'openai/gpt-5.6-luna', provider: 'nanogpt' },
+  { label: 'NanoGPT GPT-5.5 (Frontier)', value: 'openai/gpt-5.5', provider: 'nanogpt' },
+  { label: 'NanoGPT Claude Sonnet 5', value: 'anthropic/claude-sonnet-5', provider: 'nanogpt' },
+  { label: 'NanoGPT Claude Opus 4.8', value: 'anthropic/claude-opus-4.8', provider: 'nanogpt' },
+  { label: 'NanoGPT Grok 4.6', value: 'x-ai/grok-4.6', provider: 'nanogpt' },
+  { label: 'NanoGPT GLM 5.3 (Code)', value: 'z-ai/glm-5.3', provider: 'nanogpt' },
+  { label: 'NanoGPT GLM 5.3 Flash Uncensored', value: 'z-ai/glm-5.3-flash-uncensored', provider: 'nanogpt' },
+  { label: 'NanoGPT DeepSeek V4 Pro', value: 'deepseek/deepseek-v4-pro', provider: 'nanogpt' },
+  { label: 'NanoGPT DeepSeek V4 Flash (Fast)', value: 'deepseek/deepseek-v4-flash', provider: 'nanogpt' },
+  { label: 'NanoGPT Kimi K3 (Reasoning)', value: 'moonshotai/kimi-k3', provider: 'nanogpt' },
+  { label: 'NanoGPT Kimi K2.5', value: 'moonshotai/kimi-k2.5', provider: 'nanogpt' },
+  { label: 'NanoGPT MiniMax M2.7', value: 'minimax/minimax-m2.7', provider: 'nanogpt' },
+  { label: 'NanoGPT Qwen 3.8 27B', value: 'qwen/qwen3.8-27b', provider: 'nanogpt' },
+  { label: 'NanoGPT Llama 4 Maverick', value: 'meta-llama/llama-4-maverick', provider: 'nanogpt' },
+  { label: 'NanoGPT Gemma 4 31B', value: 'google/gemma-4-31b-it', provider: 'nanogpt' },
+  { label: 'NanoGPT Artemis v1.1 (Creative)', value: 'TheDrummer/Artemis-v1.1', provider: 'nanogpt' },
+  // ── OpenRouter free tier (verified live) ─────────────────────────────────
+  { label: 'OR Nemotron 3 Ultra 550B (Free)', value: 'nvidia/nemotron-3-ultra-550b-a55b:free', provider: 'openrouter', isFree: true },
+  { label: 'OR Nemotron 3 Super 120B (Free)', value: 'nvidia/nemotron-3-super-120b-a12b:free', provider: 'openrouter', isFree: true },
+  { label: 'OR GLM 5.2 (Free Code)', value: 'z-ai/glm-5.2:free', provider: 'openrouter', isFree: true },
+  { label: 'OR Gemma 4 31B (Free)', value: 'google/gemma-4-31b-it:free', provider: 'openrouter', isFree: true },
+  { label: 'OR Inkling (Free Reasoning)', value: 'thinkingmachines/inkling:free', provider: 'openrouter', isFree: true },
+  { label: 'OR Laguna S 2.1 (Free Code)', value: 'poolside/laguna-s-2.1:free', provider: 'openrouter', isFree: true },
 
   // ── PUTER.COM (100% Free & Keyless AI Gateway) ───────────────────────────
   { label: 'Puter GPT-4o (OpenAI)', value: 'gpt-4o', provider: 'puter', isFree: true },

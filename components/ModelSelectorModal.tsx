@@ -274,7 +274,7 @@ export const ModelSelectorModal: React.FC<{
         role="dialog"
         aria-modal="true"
         aria-label="Model and Provider Selector"
-        className="relative w-full max-w-3xl max-h-[88vh] bg-[#0b0f1c] border border-slate-800/80 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-3xl max-h-[88vh] bg-[#0e0204] border border-slate-800/80 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
 
         {/* Header */}

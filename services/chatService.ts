@@ -39,12 +39,19 @@ export class ChatService {
         try {
           const comp = await pxpipeEngine.renderTextToImage(rawContent, {
             title: 'PIPEX_COMMAND_ARBITRAGE',
-            theme: 'terminal-green'
+            theme: 'terminal-red'
           });
           const newImages = comp.images?.length > 0 ? comp.images : [comp.dataUrl];
+          // Secrets are replaced by exact-recall refs inside the rendered frame,
+          // so the plain-text legend MUST ship with the frames or the operator
+          // silently loses the original values.
+          const escapeLegend = comp.preservedPlainText ? `\n${comp.preservedPlainText}` : '';
+          const savingsLabel = comp.stats.tokenSavingsPct > 0
+            ? `SAVED ~${comp.stats.tokenSavingsPct}% TOKENS`
+            : 'NO NET TOKEN SAVING (input too small to profit)';
           augmentedMessages[augmentedMessages.length - 1] = {
             ...lastMsg,
-            content: `[PXPIPE ARBITRAGE ATTACHED // SAVED ${comp.stats.tokenSavingsPct}% TOKENS]\nAnalyze the attached visual context and answer thoroughly.`,
+            content: `[PXPIPE ARBITRAGE ATTACHED // ${newImages.length} FRAME${newImages.length > 1 ? 'S' : ''} - ${savingsLabel}]${escapeLegend}\nAnalyze the attached visual context and answer thoroughly.`,
             images: [...(lastMsg.images || []), ...newImages]
           };
           toolInvocations.push({
@@ -55,7 +62,8 @@ export class ChatService {
             result: {
               status: 'compressed',
               tokenSavingsPct: comp.stats.tokenSavingsPct,
-              frames: newImages.length
+              frames: newImages.length,
+              preservedPlainText: comp.preservedPlainText || undefined
             }
           });
         } catch (err: any) {
@@ -147,6 +155,37 @@ export class ChatService {
     }
 
     return { toolInvocations, augmentedMessages };
+  }
+
+  /**
+   * Runs the pxpipe/pipex compression locally instead of through the generic
+   * tool registry. The registry serialises the result without the exact-recall
+   * legend, which would silently lose any secrets that were swapped out of the
+   * rendered frames — so those two tool names are handled here, where the
+   * legend and the rendered images can both be forwarded intact.
+   *
+   * @returns the compression result, or null when the call is not a pxpipe job.
+   */
+  private async runLocalPxpipeTool(name: string, args: any): Promise<any | null> {
+    if (name !== 'pxpipe' && name !== 'pipex') return null;
+    const text = String(args?.text ?? args?.content ?? args?.query ?? '');
+    if (!text.trim()) return null;
+
+    const comp = await pxpipeEngine.renderTextToImage(text, {
+      title: args?.title || (name === 'pipex' ? 'PIPEX_COMPRESSION' : 'PXPIPE_COMPRESSION'),
+      theme: args?.theme || 'terminal-red'
+    });
+
+    return {
+      status: 'compressed',
+      tokenSavingsPct: comp.stats.tokenSavingsPct,
+      originalChars: comp.stats.originalChars,
+      estimatedVisualTokens: comp.stats.estimatedVisualTokens,
+      frameCount: comp.images?.length || 1,
+      preservedPlainText: comp.preservedPlainText || undefined,
+      images: comp.images,
+      notice: 'Rendered frames are attached to the next turn as images — read them directly.'
+    };
   }
 
   /**
@@ -277,7 +316,7 @@ export class ChatService {
         }
 
         // Execute detected tool calls
-        const executedResults: Array<{ name: string; args: any; result: any; isError: boolean }> = [];
+        const executedResults: Array<{ name: string; args: any; result: any; isError: boolean; images?: string[] }> = [];
         for (const call of unexecutedCalls.filter(c => isToolArmed(settings, c.name))) {
           if (signal?.aborted) {
             telemetryService.recordError(provider, 'Request aborted by user');
@@ -292,7 +331,10 @@ export class ChatService {
           let toolResult: any;
           let isError = false;
           try {
-            toolResult = await executeToolByName(call.name, call.args);
+            toolResult = await this.runLocalPxpipeTool(call.name, call.args);
+            if (toolResult === null) {
+              toolResult = await executeToolByName(call.name, call.args);
+            }
             if (typeof toolResult === 'string' && (toolResult.includes('"success":false') || toolResult.includes('"error":'))) {
               isError = true;
             }
@@ -314,7 +356,27 @@ export class ChatService {
             latencyMs: Date.now() - startedAt
           });
 
-          executedResults.push({ name: call.name, args: call.args, result: toolResult, isError });
+          // Tools such as pxpipe return rendered frames as data URLs. Base64 in
+          // the transcript costs thousands of text tokens and the model cannot
+          // decode it anyway, so frames are detached here and re-attached as
+          // real image parts on the next turn instead.
+          let resultImages: string[] = [];
+          if (toolResult && typeof toolResult === 'object') {
+            const rawImages = (toolResult as any).images;
+            if (Array.isArray(rawImages)) {
+              resultImages = rawImages
+                .filter((img: any) => typeof img === 'string' && img.startsWith('data:image/'))
+                .slice(0, 6);
+              if (resultImages.length > 0) {
+                const trimmed: any = { ...(toolResult as any) };
+                delete trimmed.images;
+                toolResult = trimmed;
+                accumulatedInvocations[accumulatedInvocations.length - 1].result = trimmed;
+              }
+            }
+          }
+
+          executedResults.push({ name: call.name, args: call.args, result: toolResult, isError, images: resultImages });
         }
 
         if (blockedCalls.length > 0) {
@@ -349,9 +411,16 @@ export class ChatService {
           return `=== TOOL RESULT FOR "${r.name}" ===\nArguments: ${JSON.stringify(r.args)}\nOutput:\n${resStr}`;
         }).join('\n\n');
 
+        // Frames rendered by tools (pxpipe) travel as images, not as text.
+        const evidenceImages = executedResults.flatMap(r => r.images || []).slice(0, 8);
+        const frameNote = evidenceImages.length > 0
+          ? `\n\n[RENDERED CONTEXT ATTACHED: ${evidenceImages.length} image frame${evidenceImages.length > 1 ? 's' : ''}. The compressed payload is in those image(s) — read them directly instead of asking for the text again.]`
+          : '';
+
         loopMessages.push({
           role: 'user',
-          content: `[LIVE TOOL EXECUTION RESULTS RECEIVED]:\n${formattedEvidence}\n\nNow, incorporate the above real-time findings into your answer for the user. Answer comprehensively. Do not repeat tool calls unless further data is required.`,
+          content: `[LIVE TOOL EXECUTION RESULTS RECEIVED]:\n${formattedEvidence}${frameNote}\n\nNow, incorporate the above real-time findings into your answer for the user. Answer comprehensively. Do not repeat tool calls unless further data is required.`,
+          images: evidenceImages.length > 0 ? evidenceImages : undefined,
           timestamp: Date.now()
         });
       }
