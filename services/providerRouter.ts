@@ -1,4 +1,4 @@
-import { AppSettings, Message, ProviderType, StreamChunk, ProviderHealthStats } from '../types';
+import { AppSettings, Message, ProviderType, StreamChunk, ProviderHealthStats, ToolInvocation } from '../types';
 import { FALLBACK_CHAIN, FREE_MODEL_DEFAULTS, FREE_PROVIDERS, FREE_TIER_PROVIDERS } from '../constants';
 import { telemetryService } from './telemetry';
 
@@ -244,8 +244,23 @@ export class ProviderRouter {
           // stream produced nothing usable.
           let produced = false;
           let last: StreamChunk | null = null;
+          // Tool cards and sources can arrive on chunks that carry no text
+          // (e.g. the final chunk after a native function call), so collect
+          // them separately instead of dropping everything but the last chunk.
+          const streamedTools: ToolInvocation[] = [];
+          let streamedSources: { title: string; url: string }[] | undefined;
           try {
             for await (const chunk of service.streamChat(effectiveSettings, messages, signal)) {
+              if (chunk.toolInvocations && chunk.toolInvocations.length > 0) {
+                for (const inv of chunk.toolInvocations) {
+                  const existing = streamedTools.findIndex(t => t.toolCallId === inv.toolCallId);
+                  if (existing >= 0) streamedTools[existing] = inv;
+                  else streamedTools.push(inv);
+                }
+              }
+              if (chunk.sources && chunk.sources.length > 0) {
+                streamedSources = chunk.sources;
+              }
               if (chunk.text || (chunk.images && chunk.images.length > 0)) {
                 last = chunk;
                 onChunk(chunk);
@@ -257,7 +272,14 @@ export class ProviderRouter {
             // Remember the stream failure; decide below whether to retry blocking.
             last = null;
           }
-          result = last || { text: '', images: [] };
+          result = last ? { ...last } : { text: '', images: [] };
+          if (streamedTools.length > 0) {
+            result.toolInvocations = streamedTools;
+            produced = true;
+          }
+          if (streamedSources && !result.sources?.length) {
+            result.sources = streamedSources;
+          }
           if (!produced && !(result.images && result.images.length > 0)) {
             if (typeof service.generateChat === 'function') {
               // One blocking retry before giving up and moving to the next provider.
@@ -272,7 +294,7 @@ export class ProviderRouter {
           result = await this.collectStream(service.streamChat(effectiveSettings, messages, signal));
         }
 
-        if (result && (result.text || (result.images && result.images.length > 0))) {
+        if (result && (result.text || (result.images && result.images.length > 0) || (result.toolInvocations && result.toolInvocations.length > 0))) {
           this.recordSuccess(provider, Date.now() - start);
           return result;
         }

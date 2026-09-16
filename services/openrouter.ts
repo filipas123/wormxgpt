@@ -1,4 +1,5 @@
-import { AppSettings, Message } from '../types';
+import { AppSettings, Message, ToolInvocation } from '../types';
+import { getEffectiveSystemInstruction, truncateSystemInstruction } from '../utils/promptUtils';
 import { pruneHistory } from '../utils/tokenManager';
 import { validateAndFixToolArgs } from '../utils/toolHelpers';
 
@@ -51,7 +52,7 @@ class OpenRouterService {
     }
   }
 
-  async *streamChat(settings: AppSettings, messages: Message[], signal?: AbortSignal): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+  async *streamChat(settings: AppSettings, messages: Message[], signal?: AbortSignal): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[]; toolInvocations?: ToolInvocation[] }> {
     if (signal?.aborted) return;
     const key = this.getApiKey();
     if (!key) {
@@ -63,9 +64,9 @@ class OpenRouterService {
     const tokenBudget = maxTokens - responseBudget;
     let usedTokens = 0;
 
-    let systemInstruction = settings.systemInstruction || '';
+    let systemInstruction = getEffectiveSystemInstruction(settings, messages);
     if (estimateTokens(systemInstruction) > 1000) {
-      systemInstruction = systemInstruction.substring(0, 4000);
+      systemInstruction = truncateSystemInstruction(systemInstruction, 4000);
     }
     usedTokens += estimateTokens(systemInstruction);
 
@@ -114,6 +115,11 @@ class OpenRouterService {
     const url = this.baseUrl + '/chat/completions';
     let accumulatedText = '';
     let toolSources: { title: string; url: string }[] = [];
+    // Reported so the UI can render a real result card per executed call
+    // instead of leaving only the inline status line as evidence.
+    const toolInvocations: ToolInvocation[] = [];
+    // Set once if this model rejects function declarations (then retried plain).
+    let toolFallbackUsed = false;
     const MAX_TURNS = 10;
     const decoder = new TextDecoder();
 
@@ -160,6 +166,15 @@ class OpenRouterService {
               errorText = jsonError.error.message;
             }
           } catch (e) { }
+          if (requestBody?.tools && !toolFallbackUsed && /tool|function/i.test(errorText)) {
+            // This model does not accept function declarations — retry without
+            // them so the turn still produces an answer.
+            toolFallbackUsed = true;
+            delete requestBody.tools;
+            delete requestBody.tool_choice;
+            console.warn('[OpenRouter] Tool declarations rejected — retrying without tools.');
+            continue;
+          }
           throw new Error('HTTP ' + response.status + ': ' + (errorText || response.statusText));
         }
 
@@ -240,8 +255,9 @@ class OpenRouterService {
             const { getToolExecutingString, getToolResultString } = await import('../utils/toolHelpers');
             const execStr = getToolExecutingString(tc.name);
             accumulatedText += `${execStr}\n`;
-            yield { text: accumulatedText, images: [], sources: toolSources };
+            yield { text: accumulatedText, images: [], sources: toolSources, toolInvocations: [...toolInvocations] };
 
+            const startedAt = Date.now();
             const toolResultData = await executeToolCall({
               id: tc.id,
               type: 'function',
@@ -276,9 +292,23 @@ class OpenRouterService {
               if (parsedResult.error !== undefined) isError = true;
             } catch (e) { isError = false; }
 
+            let parsedArgs: any = {};
+            try { parsedArgs = JSON.parse(validateAndFixToolArgs(tc.args, tc.name)); } catch { parsedArgs = {}; }
+
+            toolInvocations.push({
+              state: 'result',
+              toolCallId: tc.id,
+              toolName: tc.name,
+              args: parsedArgs,
+              result: parsedResult,
+              startedAt,
+              completedAt: Date.now(),
+              latencyMs: Date.now() - startedAt
+            });
+
             const resultStr = getToolResultString(tc.name, isError);
             accumulatedText = accumulatedText.replace(execStr, resultStr);
-            yield { text: accumulatedText, images: [], sources: toolSources };
+            yield { text: accumulatedText, images: [], sources: toolSources, toolInvocations: [...toolInvocations] };
           }
 
           continue;

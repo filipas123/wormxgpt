@@ -2,7 +2,7 @@ import { AppSettings, Message, StreamChunk, ToolInvocation } from '../types';
 import { providerRouter } from './providerRouter';
 import { mcpRegistry } from './mcp/registry';
 import { executeToolByName } from './tools';
-import { parseToolCallsFromText, stripToolCallsFromText } from '../utils/toolAwareness';
+import { isToolArmed, parseToolCallsFromText, stripToolCallsFromText, stripToolStatusMarkers } from '../utils/toolAwareness';
 import { pxpipeEngine } from './pxpipe';
 import { telemetryService } from './telemetry';
 
@@ -150,6 +150,17 @@ export class ChatService {
   }
 
   /**
+   * Clean the final answer text: always drop raw tool-call syntax, and drop the
+   * inline tool status lines only when a tool invocation card will show the
+   * output (providers that never report invocations keep the status line as
+   * their only evidence that a tool actually ran).
+   */
+  private finalizeText(text: string, invocations?: ToolInvocation[]): string {
+    const cleaned = stripToolCallsFromText(text || '');
+    return invocations && invocations.length > 0 ? stripToolStatusMarkers(cleaned) : cleaned;
+  }
+
+  /**
    * Synchronously generate chat completion with Autonomous Multi-turn Tool ReAct Loop.
    * onChunk receives incremental stream chunks for live UI rendering.
    */
@@ -206,41 +217,77 @@ export class ChatService {
         );
 
         finalChunk = response;
-        if (response.toolInvocations && response.toolInvocations.length > 0) {
-          accumulatedInvocations.push(...response.toolInvocations);
+
+        // Provider-native tool calls (e.g. Gemini function calls). Entries that
+        // are already 'result' were executed inside the provider; anything
+        // still in the 'call' state must be executed here.
+        const nativePending: Array<{ name: string; args: any; toolCallId?: string }> = [];
+        for (const inv of response.toolInvocations || []) {
+          if (inv.state === 'result') {
+            accumulatedInvocations.push(inv);
+            // Record the signature so a model that both called the tool natively
+            // and repeated the call in its text does not execute it twice.
+            executedCallSignatures.add(`${inv.toolName}::${JSON.stringify(inv.args || {})}`);
+          } else {
+            nativePending.push({ name: inv.toolName, args: inv.args || {}, toolCallId: inv.toolCallId });
+          }
         }
 
         // Check if model emitted any tool calls in its text output
         const rawText = response.text || '';
         const detectedCalls = parseToolCallsFromText(rawText);
 
-        // Filter out calls that have already been executed with identical arguments to prevent infinite loops
-        const unexecutedCalls = detectedCalls.filter(call => {
+        // Merge text-detected and provider-native calls, then drop calls that
+        // were already executed with identical arguments to prevent loops.
+        const pendingCalls: Array<{ name: string; args: any; toolCallId?: string }> = [
+          ...detectedCalls.map(c => ({ name: c.name, args: c.args, toolCallId: undefined as string | undefined })),
+          ...nativePending,
+        ];
+        const unexecutedCalls = pendingCalls.filter(call => {
           const sig = `${call.name}::${JSON.stringify(call.args || {})}`;
           if (executedCallSignatures.has(sig)) return false;
           executedCallSignatures.add(sig);
           return true;
         });
 
+        // Only tools the operator actually armed may run. A model that names a
+        // tool outside the catalog it was given gets a factual refusal instead
+        // of silent execution of something the user disabled.
+        const blockedCalls = unexecutedCalls.filter(call => !isToolArmed(settings, call.name));
+        for (const call of blockedCalls) {
+          accumulatedInvocations.push({
+            state: 'result',
+            toolCallId: `blocked_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            toolName: call.name,
+            args: call.args || {},
+            result: { success: false, error: `Tool \`${call.name}\` is not armed for this session.` },
+            completedAt: Date.now()
+          });
+        }
+
         // If no new tool calls in text, we have reached the final answer!
         if (unexecutedCalls.length === 0) {
           telemetryService.recordRequestEnd(Math.round((response.text?.length || 0) / 4));
+          const finalInvocations = accumulatedInvocations.length > 0 ? accumulatedInvocations : response.toolInvocations;
           return {
             ...response,
-            text: stripToolCallsFromText(response.text || ''),
-            toolInvocations: accumulatedInvocations.length > 0 ? accumulatedInvocations : response.toolInvocations
+            text: this.finalizeText(response.text || '', finalInvocations),
+            toolInvocations: finalInvocations
           };
         }
 
         // Execute detected tool calls
         const executedResults: Array<{ name: string; args: any; result: any; isError: boolean }> = [];
-        for (const call of unexecutedCalls) {
+        for (const call of unexecutedCalls.filter(c => isToolArmed(settings, c.name))) {
           if (signal?.aborted) {
             telemetryService.recordError(provider, 'Request aborted by user');
             throw new Error('Request aborted by user');
           }
           onToolStart?.(call.name);
-          const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          // Reuse the provider's toolCallId when present so the UI shows a
+          // single card per call (call -> result) instead of duplicates.
+          const callId = call.toolCallId || `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          const startedAt = Date.now();
 
           let toolResult: any;
           let isError = false;
@@ -261,10 +308,28 @@ export class ChatService {
             toolCallId: callId,
             toolName: call.name,
             args: call.args,
-            result: toolResult
+            result: toolResult,
+            startedAt,
+            completedAt: Date.now(),
+            latencyMs: Date.now() - startedAt
           });
 
           executedResults.push({ name: call.name, args: call.args, result: toolResult, isError });
+        }
+
+        if (blockedCalls.length > 0) {
+          const blockedNames = blockedCalls.map(c => c.name).join(', ');
+          loopMessages.push({
+            role: 'assistant',
+            content: `[Attempted unarmed tool: ${blockedNames}]`,
+            timestamp: Date.now()
+          });
+          loopMessages.push({
+            role: 'user',
+            content: `[TOOL ACCESS DENIED]: ${blockedNames} is not armed for this session, so it was not executed. The only tools you may call are the ones listed in your ARMED TOOLS CATALOG. Answer the user now using your own knowledge, or tell them plainly that the data requires arming that tool. Do not call it again.`,
+            timestamp: Date.now()
+          });
+          continue;
         }
 
         // Push intermediate assistant response
@@ -294,7 +359,7 @@ export class ChatService {
       telemetryService.recordRequestEnd(Math.round((finalChunk.text?.length || 0) / 4));
       return {
         ...finalChunk,
-        text: stripToolCallsFromText(finalChunk.text || ''),
+        text: this.finalizeText(finalChunk.text || '', accumulatedInvocations),
         toolInvocations: accumulatedInvocations
       };
     } catch (err: any) {

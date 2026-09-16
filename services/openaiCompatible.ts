@@ -1,8 +1,17 @@
-import { AppSettings, Message } from '../types';
-import { getEffectiveSystemInstruction } from '../utils/promptUtils';
+import { AppSettings, Message, ToolInvocation } from '../types';
+import { getEffectiveSystemInstruction, truncateSystemInstruction } from '../utils/promptUtils';
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+/** Best-effort parse of a tool argument payload for display purposes. */
+function safeJsonArgs(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { raw };
+  }
 }
 
 export interface StreamYield {
@@ -11,6 +20,7 @@ export interface StreamYield {
   video?: string;
   audio?: string;
   sources?: { title: string; url: string }[];
+  toolInvocations?: ToolInvocation[];
 }
 
 export abstract class OpenAICompatibleService {
@@ -41,6 +51,18 @@ export abstract class OpenAICompatibleService {
 
   protected getAuthHeader(key: string): Record<string, string> {
     return { 'Authorization': `Bearer ${key}` };
+  }
+
+  /**
+   * True when an API error means the endpoint/model cannot accept function
+   * declarations. The request is then retried without them so the model still
+   * answers — tool use stays possible through the prompt-level protocol, which
+   * ChatService detects and executes.
+   */
+  protected isToolUnsupportedError(message: string): boolean {
+    const m = (message || '').toLowerCase();
+    if (!m.includes('tool') && !m.includes('function')) return false;
+    return /not support|unsupported|does not support|doesn't support|unrecognized|unknown|invalid|bad request|no such|not allowed|not available|not permitted/.test(m);
   }
 
   async verifyApiKey(key: string): Promise<boolean> {
@@ -130,7 +152,7 @@ export abstract class OpenAICompatibleService {
 
     let systemPrompt = getEffectiveSystemInstruction(settings, messages);
     if (systemPrompt && estimateTokens(systemPrompt) > 1500) {
-      systemPrompt = systemPrompt.substring(0, 4000) + '\n[System prompt truncated for token limit]';
+      systemPrompt = truncateSystemInstruction(systemPrompt, 4000);
     }
     usedTokens += estimateTokens(systemPrompt);
 
@@ -163,10 +185,11 @@ export abstract class OpenAICompatibleService {
     const { getDynamicTools } = await import('./tools');
     const dynamicTools = await getDynamicTools(settings);
 
-    const requestBody = this.buildRequestBody(settings, apiMessages, dynamicTools.length > 0 ? dynamicTools : undefined);
+    let requestBody = this.buildRequestBody(settings, apiMessages, dynamicTools.length > 0 ? dynamicTools : undefined);
     const url = this.getChatCompletionsUrl();
     let accumulatedText = '';
     let toolSources: { title: string; url: string }[] = [];
+    const toolInvocations: ToolInvocation[] = [];
     const MAX_TURNS = 5;
     let currentApiMessages = [...apiMessages];
 
@@ -186,23 +209,43 @@ export abstract class OpenAICompatibleService {
       const systemMsg = currentApiMessages.find((m: any) => m.role === 'system');
       const prunedMessages = systemMsg ? [systemMsg, ...recentMsgs.filter((m: any) => m !== systemMsg)] : recentMsgs;
 
-      const response = await fetch(url, {
+      const post = (body: any) => fetch(url, {
         signal,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...this.getAuthHeader(key)
         },
-        body: JSON.stringify({ ...requestBody, messages: prunedMessages, stream: false })
+        body: JSON.stringify({ ...body, messages: prunedMessages, stream: false })
       });
 
-      if (!response.ok) {
-        let errorText = await response.text();
+      const readError = async (res: Response) => {
+        let errorText = await res.text();
         try {
           const jsonError = JSON.parse(errorText);
           if (jsonError.error?.message) errorText = jsonError.error.message;
         } catch {}
-        throw new Error(`${this.providerName} Error ${response.status}: ${errorText || response.statusText}`);
+        return errorText || res.statusText;
+      };
+
+      let response = await post(requestBody);
+
+      if (!response.ok && requestBody.tools) {
+        const firstError = await readError(response);
+        if (!this.isToolUnsupportedError(firstError)) {
+          throw new Error(`${this.providerName} Error ${response.status}: ${firstError}`);
+        }
+        // Endpoint or model does not take function declarations: retry plain so
+        // the model still answers instead of failing the whole request.
+        console.warn(`[${this.providerName}] Tool declarations rejected (${firstError}) — retrying without tools.`);
+        const { tools: _omitTools, tool_choice: _omitChoice, ...plainBody } = requestBody;
+        requestBody = plainBody;
+        response = await post(requestBody);
+        if (!response.ok) {
+          throw new Error(`${this.providerName} Error ${response.status}: ${await readError(response)}`);
+        }
+      } else if (!response.ok) {
+        throw new Error(`${this.providerName} Error ${response.status}: ${await readError(response)}`);
       }
 
       const data = await response.json();
@@ -216,7 +259,7 @@ export abstract class OpenAICompatibleService {
       // Handle tool calls
       if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
         const { executeToolCall } = await import('./tools');
-        const { getToolExecutingString, validateAndFixToolArgs } = await import('../utils/toolHelpers');
+        const { getToolExecutingString, getToolResultString, validateAndFixToolArgs } = await import('../utils/toolHelpers');
 
         currentApiMessages.push(assistantMsg);
 
@@ -224,23 +267,43 @@ export abstract class OpenAICompatibleService {
           const toolName = tc.function?.name || '';
           const toolArgsStr = tc.function?.arguments || '{}';
           const execStr = getToolExecutingString(toolName);
+          const toolCallId = tc.id || 'call_' + Math.random().toString(36).substring(7);
+          const fixedArgs = validateAndFixToolArgs(toolArgsStr, toolName);
+          const startedAt = Date.now();
 
           accumulatedText += (assistantMsg.content ? assistantMsg.content + '\n' : '') + `${execStr}\n`;
 
           const toolResultData = await executeToolCall({
-            id: tc.id || 'call_' + Math.random().toString(36).substring(7),
+            id: toolCallId,
             type: 'function',
-            function: { name: toolName, arguments: validateAndFixToolArgs(toolArgsStr, toolName) }
+            function: { name: toolName, arguments: fixedArgs }
           });
 
           let parsedResult: any;
+          let isError = false;
           try {
             parsedResult = JSON.parse(toolResultData);
             if (Array.isArray(parsedResult)) parsedResult = { results: parsedResult };
             if (parsedResult.sources) toolSources = [...toolSources, ...parsedResult.sources];
+            if (parsedResult.error !== undefined || parsedResult.success === false) isError = true;
           } catch {
             parsedResult = { content: toolResultData };
           }
+
+          // Swap the in-progress marker for the outcome so the transcript never
+          // shows a permanently stuck "Executing..." line.
+          accumulatedText = accumulatedText.replace(execStr, getToolResultString(toolName, isError));
+
+          toolInvocations.push({
+            state: 'result',
+            toolCallId,
+            toolName,
+            args: safeJsonArgs(fixedArgs),
+            result: parsedResult,
+            startedAt,
+            completedAt: Date.now(),
+            latencyMs: Date.now() - startedAt
+          });
 
           currentApiMessages.push({
             role: 'tool',
@@ -258,14 +321,16 @@ export abstract class OpenAICompatibleService {
       return {
         text: accumulatedText,
         images: [],
-        sources: toolSources
+        sources: toolSources,
+        toolInvocations
       };
     }
 
     return {
       text: accumulatedText || 'No response generated.',
       images: [],
-      sources: toolSources
+      sources: toolSources,
+      toolInvocations
     };
   }
 

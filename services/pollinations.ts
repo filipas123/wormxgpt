@@ -1,9 +1,19 @@
-import { AppSettings, Message } from '../types';
-import { getEffectiveSystemInstruction } from '../utils/promptUtils';
+import { AppSettings, Message, ToolInvocation } from '../types';
+import { getEffectiveSystemInstruction, truncateSystemInstruction } from '../utils/promptUtils';
+import { parseToolCallsFromText } from '../utils/toolAwareness';
 
 // Simple token estimation (roughly 1 token per 4 characters)
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+/** Best-effort parse of a tool argument payload for display purposes. */
+function safeJsonArgs(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { raw };
+  }
 }
 
 export interface StreamYield {
@@ -12,6 +22,7 @@ export interface StreamYield {
   video?: string;
   audio?: string;
   sources?: { title: string; url: string }[];
+  toolInvocations?: ToolInvocation[];
 }
 
 export class PollinationsService {
@@ -128,7 +139,7 @@ export class PollinationsService {
 
     let systemInstruction = getEffectiveSystemInstruction(settings, messages);
     if (systemInstruction && estimateTokens(systemInstruction) > 1500) {
-      systemInstruction = systemInstruction.substring(0, 4000) + '\n[System prompt truncated for token limit]';
+      systemInstruction = truncateSystemInstruction(systemInstruction, 4000);
     }
 
     const openAIMessages: Array<any> = [];
@@ -239,6 +250,13 @@ export class PollinationsService {
       try { reader.releaseLock(); } catch {}
     }
 
+    // This plain-text endpoint cannot return a structured function call, so if
+    // the model asked for a tool we must hand the turn to the tool-aware
+    // blocking path instead of surfacing a request that will never execute.
+    if (cumulative && parseToolCallsFromText(cumulative).length > 0) {
+      return false;
+    }
+
     return cumulative.length > 0;
   }
 
@@ -254,7 +272,7 @@ export class PollinationsService {
 
     let systemInstruction = getEffectiveSystemInstruction(settings, messages);
     if (systemInstruction && estimateTokens(systemInstruction) > 1500) {
-      systemInstruction = systemInstruction.substring(0, 4000) + '\n[System prompt truncated for token limit]';
+      systemInstruction = truncateSystemInstruction(systemInstruction, 4000);
     }
     usedTokens += estimateTokens(systemInstruction);
 
@@ -311,6 +329,7 @@ export class PollinationsService {
 
     let toolSources: { title: string; url: string }[] = [];
     let accumulatedText = '';
+    const toolInvocations: ToolInvocation[] = [];
     const MAX_TURNS = 4;
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -342,11 +361,19 @@ export class PollinationsService {
         if (postResp.ok) {
           const textResult = await postResp.text();
           if (textResult && textResult.trim()) {
-            return {
-              text: accumulatedText ? `${accumulatedText}\n${textResult}` : textResult,
-              images: [],
-              sources: toolSources
-            };
+            // This route carries no tool schemas and cannot execute a function
+            // call. When the model asks for a tool, fall through to the
+            // tool-capable completions route below rather than returning text
+            // that describes a call nobody performs.
+            const requestedTool = dynamicTools.length > 0
+              && parseToolCallsFromText(textResult).length > 0;
+            if (!requestedTool) {
+              return {
+                text: accumulatedText ? `${accumulatedText}\n${textResult}` : textResult,
+                images: [],
+                sources: toolSources
+              };
+            }
           }
         }
       } catch (err: any) {
@@ -381,7 +408,7 @@ export class PollinationsService {
             // Handle tool calls if any
             if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
               const { executeToolCall } = await import('./tools');
-              const { getToolExecutingString, validateAndFixToolArgs } = await import('../utils/toolHelpers');
+              const { getToolExecutingString, getToolResultString, validateAndFixToolArgs } = await import('../utils/toolHelpers');
 
               openAIMessages.push(assistantMsg);
 
@@ -389,23 +416,41 @@ export class PollinationsService {
                 const toolName = tc.function?.name || '';
                 const toolArgsStr = tc.function?.arguments || '{}';
                 const execStr = getToolExecutingString(toolName);
+                const toolCallId = tc.id || 'call_' + Math.random().toString(36).substring(7);
+                const fixedArgs = validateAndFixToolArgs(toolArgsStr, toolName);
+                const startedAt = Date.now();
 
                 accumulatedText += (assistantMsg.content ? assistantMsg.content + '\n' : '') + `${execStr}\n`;
 
                 const toolResultData = await executeToolCall({
-                  id: tc.id || 'call_' + Math.random().toString(36).substring(7),
+                  id: toolCallId,
                   type: 'function',
-                  function: { name: toolName, arguments: validateAndFixToolArgs(toolArgsStr, toolName) }
+                  function: { name: toolName, arguments: fixedArgs }
                 });
 
                 let parsedResult: any;
+                let isError = false;
                 try {
                   parsedResult = JSON.parse(toolResultData);
                   if (Array.isArray(parsedResult)) parsedResult = { results: parsedResult };
                   if (parsedResult.sources) toolSources = [...toolSources, ...parsedResult.sources];
+                  if (parsedResult.error !== undefined || parsedResult.success === false) isError = true;
                 } catch {
                   parsedResult = { content: toolResultData };
                 }
+
+                accumulatedText = accumulatedText.replace(execStr, getToolResultString(toolName, isError));
+
+                toolInvocations.push({
+                  state: 'result',
+                  toolCallId,
+                  toolName,
+                  args: safeJsonArgs(fixedArgs),
+                  result: parsedResult,
+                  startedAt,
+                  completedAt: Date.now(),
+                  latencyMs: Date.now() - startedAt
+                });
 
                 openAIMessages.push({
                   role: 'tool',
@@ -421,7 +466,8 @@ export class PollinationsService {
             return {
               text: accumulatedText ? `${accumulatedText}\n${finalContent}` : finalContent,
               images: [],
-              sources: toolSources
+              sources: toolSources,
+              toolInvocations
             };
           }
         }
@@ -456,7 +502,8 @@ export class PollinationsService {
     return {
       text: accumulatedText || 'No response generated.',
       images: [],
-      sources: toolSources
+      sources: toolSources,
+      toolInvocations
     };
   }
 

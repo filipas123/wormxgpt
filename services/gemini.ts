@@ -1,7 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse, Part } from "@google/genai";
-import { AppSettings, Message } from "../types";
+import { AppSettings, Message, ToolInvocation } from "../types";
 import { estimateTokens } from "../utils/tokenManager";
-import { getEffectiveSystemInstruction } from "../utils/promptUtils";
+import { getEffectiveSystemInstruction, truncateSystemInstruction } from "../utils/promptUtils";
 import { promptCacheService } from "./promptCache";
 
 export interface StreamResponse {
@@ -10,6 +10,7 @@ export interface StreamResponse {
   video?: string;
   audio?: string;
   sources?: { title: string; url: string }[];
+  toolInvocations?: ToolInvocation[];
 }
 
 export class GeminiService {
@@ -19,6 +20,34 @@ export class GeminiService {
 
   setApiKey(key: string) {
     localStorage.setItem('geminiApiKey', key);
+  }
+
+  /**
+   * Builds the thinking (chain-of-thought) config for Gemini models that support
+   * it. Reasoning *before* acting is what makes native function calling
+   * reliable, so thinking is armed for every 2.5+/3.x model the operator
+   * selected — not only Pro. Pro cannot fully disable thinking, so it falls back
+   * to the smallest allowed budget when the operator turns thinking off.
+   */
+  private buildThinkingConfig(settings: AppSettings, model: string): { thinkingBudget: number } | undefined {
+    const m = (model || '').toLowerCase();
+    const supportsThinking = m.includes('gemini-2.5') || m.includes('gemini-3');
+    if (!supportsThinking) return undefined;
+
+    const isPro = m.includes('pro');
+    const asked = Number(settings.thinkingBudget ?? 0);
+    const wantsThinking = settings.thinkingEnabled !== false && asked > 0;
+
+    if (!wantsThinking) {
+      // 2.5 Pro / 3 Pro cannot disable thinking entirely; 0 is valid only for Flash.
+      return { thinkingBudget: isPro ? 128 : 0 };
+    }
+
+    return {
+      thinkingBudget: isPro
+        ? Math.min(Math.max(asked, 128), 32768)
+        : Math.min(Math.max(asked, 512), 24576)
+    };
   }
 
   /**
@@ -54,14 +83,13 @@ export class GeminiService {
     }
 
     const ai = new GoogleGenAI({ apiKey: key });
-    const isThinkingSupported = settings.model.includes('gemini-3') || settings.model.includes('gemini-2.5');
 
     const maxTokens = 28000;
     const responseBudget = 4000;
 
     let systemPrompt = getEffectiveSystemInstruction(settings, messages);
     if (estimateTokens(systemPrompt) > 30000) {
-      systemPrompt = systemPrompt.slice(0, 90000) + '...';
+      systemPrompt = truncateSystemInstruction(systemPrompt, 90000);
     }
 
     const systemBudget = estimateTokens(systemPrompt);
@@ -182,9 +210,7 @@ export class GeminiService {
               temperature: settings.temperature,
               topP: settings.topP ?? 1.0,
               maxOutputTokens: settings.maxTokens ?? 4000,
-              thinkingConfig: isThinkingSupported && modelToUse === 'gemini-2.5-pro' ? {
-                thinkingBudget: settings.thinkingBudget
-              } : undefined,
+              thinkingConfig: this.buildThinkingConfig(settings, modelToUse),
               tools: geminiTools as any,
             },
           });
@@ -199,6 +225,7 @@ export class GeminiService {
                 temperature: settings.temperature,
                 topP: settings.topP ?? 1.0,
                 maxOutputTokens: settings.maxTokens ?? 4000,
+                thinkingConfig: this.buildThinkingConfig(settings, 'gemini-2.5-flash'),
                 tools: geminiTools as any,
               },
             });
@@ -340,11 +367,10 @@ export class GeminiService {
     }
 
     const ai = new GoogleGenAI({ apiKey: key });
-    const isThinkingSupported = settings.model.includes('gemini-3') || settings.model.includes('gemini-2.5');
 
     let systemPrompt = getEffectiveSystemInstruction(settings, messages);
     if (estimateTokens(systemPrompt) > 30000) {
-      systemPrompt = systemPrompt.slice(0, 90000) + '...';
+      systemPrompt = truncateSystemInstruction(systemPrompt, 90000);
     }
 
     const normalizeModel = (m: string) => {
@@ -357,7 +383,7 @@ export class GeminiService {
     };
     const modelToUse = normalizeModel(settings.model);
 
-    const contents = messages.map(msg => ({
+    const contents: any[] = messages.map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
     }));
@@ -379,37 +405,180 @@ export class GeminiService {
       }
     }
 
-    try {
-      const stream = await ai.models.generateContentStream({
-        model: modelToUse,
-        contents,
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: settings.temperature,
-          topP: settings.topP ?? 1.0,
-          maxOutputTokens: settings.maxTokens ?? 4000,
-          thinkingConfig: isThinkingSupported && modelToUse === 'gemini-2.5-pro' ? {
-            thinkingBudget: settings.thinkingBudget
-          } : undefined,
-        },
-      });
+    // ── Arm native function declarations ────────────────────────────────────
+    // Without these the model can only *narrate* a tool call in prose, so the
+    // runtime has nothing to execute and the user never sees a result.
+    const { getDynamicTools, executeToolCall } = await import('./tools');
+    const { validateAndFixToolArgs } = await import('../utils/toolHelpers');
+    const { pruneToolResult } = await import('../utils/tokenManager');
 
+    let geminiTools: any[] = [];
+    try {
+      const dynamicTools = await getDynamicTools(settings);
+      geminiTools = dynamicTools.length > 0 ? [{
+        functionDeclarations: dynamicTools.map((t: any) => ({
+          name: t.function.name,
+          description: t.function.description || `Tool: ${t.function.name}`,
+          parameters: t.function.parameters || { type: 'object', properties: {} }
+        }))
+      }] : [];
+    } catch (toolErr: any) {
+      console.warn('[Gemini] Failed to build tool declarations for stream:', toolErr?.message);
+      geminiTools = [];
+    }
+
+    const toolInvocations: ToolInvocation[] = [];
+    let toolSources: { title: string; url: string }[] = [];
+    const MAX_TOOL_TURNS = 6;
+
+    const buildConfig = (withTools: boolean) => ({
+      systemInstruction: systemPrompt,
+      temperature: settings.temperature,
+      topP: settings.topP ?? 1.0,
+      maxOutputTokens: settings.maxTokens ?? 4000,
+      thinkingConfig: this.buildThinkingConfig(settings, modelToUse),
+      ...(withTools && geminiTools.length > 0 ? { tools: geminiTools } : {}),
+    });
+
+    try {
+      // Cumulative assistant text across tool turns so the UI keeps every
+      // streamed token while tool results are folded back into the context.
       let cumulative = '';
-      for await (const chunk of stream) {
+
+      for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
         if (signal?.aborted) {
           throw new DOMException('Generation cancelled by user.', 'AbortError');
         }
-        const t = (chunk as any).text || '';
-        if (t) {
-          cumulative += t;
-          yield { text: cumulative, images: [], sources: [] };
+
+        let stream: any;
+        try {
+          stream = await ai.models.generateContentStream({
+            model: modelToUse,
+            contents,
+            config: buildConfig(true),
+          });
+        } catch (startErr: any) {
+          if (startErr?.name === 'AbortError' || signal?.aborted) throw startErr;
+          // Providers reject malformed/oversized declarations — retry without them
+          // rather than failing the whole request.
+          if (geminiTools.length > 0) {
+            console.warn('[Gemini] Stream rejected tool declarations, retrying without tools:', startErr?.message);
+            geminiTools = [];
+            stream = await ai.models.generateContentStream({
+              model: modelToUse,
+              contents,
+              config: buildConfig(false),
+            });
+          } else {
+            throw startErr;
+          }
         }
+
+        const modelParts: any[] = [];
+        const turnToolCalls: Array<{ name: string; args: any }> = [];
+
+        for await (const chunk of stream) {
+          if (signal?.aborted) {
+            throw new DOMException('Generation cancelled by user.', 'AbortError');
+          }
+          // Keep every raw part: function-call parts carry thought signatures
+          // that must be echoed back verbatim on the next turn.
+          const parts = chunk?.candidates?.[0]?.content?.parts;
+          if (Array.isArray(parts)) {
+            for (const part of parts) {
+              modelParts.push(part);
+              if (part?.functionCall?.name) {
+                turnToolCalls.push({ name: part.functionCall.name, args: part.functionCall.args });
+              }
+            }
+          }
+          const delta = (chunk as any)?.text;
+          if (delta) {
+            cumulative += delta;
+            yield { text: cumulative, images: [], sources: toolSources };
+          }
+        }
+
+        if (turnToolCalls.length === 0) {
+          break;
+        }
+
+        // ── Execute the function calls the model requested ──────────────────
+        const functionResponseParts: Part[] = [];
+
+        for (const tc of turnToolCalls) {
+          if (signal?.aborted) {
+            throw new DOMException('Generation cancelled by user.', 'AbortError');
+          }
+          const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+          const argsString = typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args ?? {});
+
+          let toolResultRaw: string;
+          try {
+            toolResultRaw = await executeToolCall({
+              id: callId,
+              type: 'function',
+              function: { name: tc.name, arguments: validateAndFixToolArgs(argsString, tc.name) }
+            });
+          } catch (execErr: any) {
+            toolResultRaw = JSON.stringify({ success: false, error: execErr?.message || 'Tool execution failed' });
+          }
+
+          const toolResultData = pruneToolResult(toolResultRaw, 32000);
+
+          let parsedResponse: any;
+          try {
+            parsedResponse = JSON.parse(toolResultData);
+            if (Array.isArray(parsedResponse)) {
+              parsedResponse = { results: parsedResponse };
+            }
+          } catch {
+            parsedResponse = { content: toolResultData };
+          }
+
+          if (parsedResponse?.sources && Array.isArray(parsedResponse.sources)) {
+            toolSources = [...toolSources, ...parsedResponse.sources];
+          }
+
+          functionResponseParts.push({
+            functionResponse: { name: tc.name, response: parsedResponse }
+          });
+
+          toolInvocations.push({
+            state: 'result',
+            toolCallId: callId,
+            toolName: tc.name,
+            args: tc.args ?? {},
+            result: parsedResponse,
+            completedAt: Date.now()
+          });
+        }
+
+        // Keep any pre-tool narration visually separated from the answer.
+        if (cumulative && !cumulative.endsWith('\n')) {
+          cumulative += '\n\n';
+        }
+
+        // Feed the model turn + results back so the next streamed turn can
+        // answer using the real data.
+        contents.push({ role: 'model', parts: modelParts });
+        contents.push({ role: 'user', parts: functionResponseParts });
       }
 
-      if (!cumulative.trim()) {
+      if (!cumulative.trim() && toolInvocations.length === 0) {
         // Empty stream — fall back to the blocking path before failing upstream.
         yield await this.generateChat(settings, messages, signal);
+        return;
       }
+
+      // Final chunk carries the accumulated tool activity so the UI can render
+      // result cards even though streaming text was already forwarded.
+      yield {
+        text: cumulative,
+        images: [],
+        sources: toolSources,
+        toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined
+      };
     } catch (err: any) {
       if (err.name === 'AbortError' || signal?.aborted) throw err;
       console.warn('[Gemini] stream failed, falling back to blocking path:', err?.message);

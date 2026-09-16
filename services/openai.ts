@@ -1,5 +1,14 @@
-import { Message, AppSettings } from '../types';
+import { Message, AppSettings, ToolInvocation } from '../types';
 import { getEffectiveSystemInstruction } from '../utils/promptUtils';
+
+/** Best-effort parse of a tool argument payload for display purposes. */
+function safeJsonArgs(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { raw };
+  }
+}
 
 class OpenAIService {
   private apiKey: string | null = null;
@@ -18,7 +27,7 @@ class OpenAIService {
     settings: AppSettings,
     messages: Message[],
     signal?: AbortSignal
-  ): Promise<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+  ): Promise<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[]; toolInvocations?: ToolInvocation[] }> {
     const key = settings.openaiApiKey || this.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') : '') || '';
     if (!key) {
       throw new Error('OpenAI API key not configured');
@@ -92,6 +101,7 @@ class OpenAIService {
 
     let accumulatedText = '';
     let toolSources: { title: string; url: string }[] = [];
+    const toolInvocations: ToolInvocation[] = [];
     const conversation: any[] = [...requestBody.messages];
     const MAX_TURNS = 5;
 
@@ -119,7 +129,7 @@ class OpenAIService {
       // Execute any requested tool calls, feed results back, and let the model continue.
       if (assistantMsg?.tool_calls && assistantMsg.tool_calls.length > 0) {
         const { executeToolCall } = await import('./tools');
-        const { getToolExecutingString, validateAndFixToolArgs } = await import('../utils/toolHelpers');
+        const { getToolExecutingString, getToolResultString, validateAndFixToolArgs } = await import('../utils/toolHelpers');
 
         conversation.push(assistantMsg);
         if (assistantMsg.content) accumulatedText += assistantMsg.content + '\n';
@@ -128,22 +138,45 @@ class OpenAIService {
           const toolCallId = tc.id || `call_${Math.random().toString(36).slice(2, 10)}`;
           const toolName = tc.function?.name || '';
           const toolArgsStr = tc.function?.arguments || '{}';
-          accumulatedText += `${getToolExecutingString(toolName)}\n`;
+          const execMarker = getToolExecutingString(toolName);
+          accumulatedText += `${execMarker}\n`;
+          const startedAt = Date.now();
+          const fixedArgs = validateAndFixToolArgs(toolArgsStr, toolName);
 
           const toolResultData = await executeToolCall({
             id: toolCallId,
             type: 'function',
-            function: { name: toolName, arguments: validateAndFixToolArgs(toolArgsStr, toolName) }
+            function: { name: toolName, arguments: fixedArgs }
           });
 
           let parsedResult: any;
+          let isError = false;
           try {
             parsedResult = JSON.parse(toolResultData);
             if (Array.isArray(parsedResult)) parsedResult = { results: parsedResult };
             if (parsedResult.sources) toolSources = [...toolSources, ...parsedResult.sources];
+            if (parsedResult.error !== undefined || parsedResult.success === false) isError = true;
           } catch {
             parsedResult = { content: toolResultData };
           }
+
+          // Replace the in-progress marker so the transcript reports the outcome
+          // instead of leaving a permanently "Executing..." line behind.
+          accumulatedText = accumulatedText.replace(
+            execMarker,
+            getToolResultString(toolName, isError)
+          );
+
+          toolInvocations.push({
+            state: 'result',
+            toolCallId,
+            toolName,
+            args: safeJsonArgs(fixedArgs),
+            result: parsedResult,
+            startedAt,
+            completedAt: Date.now(),
+            latencyMs: Date.now() - startedAt
+          });
 
           conversation.push({
             role: 'tool',
@@ -156,17 +189,17 @@ class OpenAIService {
       }
 
       accumulatedText += assistantMsg?.content || '';
-      return { text: accumulatedText, images: [], sources: toolSources };
+      return { text: accumulatedText, images: [], sources: toolSources, toolInvocations };
     }
 
-    return { text: accumulatedText || 'No response generated.', images: [], sources: toolSources };
+    return { text: accumulatedText || 'No response generated.', images: [], sources: toolSources, toolInvocations };
   }
 
   async *streamChat(
     settings: AppSettings,
     messages: Message[],
     signal?: AbortSignal
-  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[]; toolInvocations?: ToolInvocation[] }> {
     // Real token streaming over SSE for plain text requests.
     // Vision inputs, media commands and tool-turn continuations use the blocking path.
     const lastMsg = messages[messages.length - 1];
@@ -193,6 +226,27 @@ class OpenAIService {
   ): AsyncGenerator<{ text: string; images: string[]; sources?: { title: string; url: string }[] }, boolean, void> {
     const key = settings.openaiApiKey || this.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') : '') || '';
     if (!key) return false;
+
+    // Declare the armed tools here as well. Without this the streamed request
+    // never advertises any function, so the model can only *describe* a tool
+    // call instead of requesting one and no tool can ever execute.
+    let sseTools: any[] | undefined;
+    try {
+      const { getDynamicTools } = await import('./tools');
+      const dynamicTools = await getDynamicTools(settings);
+      if (dynamicTools.length > 0) {
+        sseTools = dynamicTools.map((t: any) => ({
+          type: 'function',
+          function: {
+            name: t.function.name,
+            description: t.function.description || `Tool: ${t.function.name}`,
+            parameters: t.function.parameters || { type: 'object', properties: {} }
+          }
+        }));
+      }
+    } catch {
+      sseTools = undefined;
+    }
 
     const systemInstruction = getEffectiveSystemInstruction(settings, messages);
     const formattedMessages: any[] = [];
@@ -223,7 +277,8 @@ class OpenAIService {
           ...(settings.maxTokens ? { max_tokens: settings.maxTokens } : {}),
           presence_penalty: settings.presencePenalty ?? 0.0,
           frequency_penalty: settings.frequencyPenalty ?? 0.0,
-          stream: true
+          stream: true,
+          ...(sseTools ? { tools: sseTools, tool_choice: 'auto' } : {})
         })
       });
     } catch {
@@ -251,6 +306,7 @@ class OpenAIService {
     const decoder = new TextDecoder();
     let buffer = '';
     let cumulative = '';
+    let sawToolCall = false;
 
     try {
       while (true) {
@@ -273,7 +329,9 @@ class OpenAIService {
             if (!payload || payload === '[DONE]') continue;
             try {
               const json = JSON.parse(payload);
-              const delta = json.choices?.[0]?.delta?.content ?? '';
+              const choice = json.choices?.[0];
+              if (choice?.delta?.tool_calls?.length) sawToolCall = true;
+              const delta = choice?.delta?.content ?? '';
               if (delta) {
                 cumulative += delta;
                 yield { text: cumulative, images: [], sources: [] };
@@ -288,6 +346,9 @@ class OpenAIService {
       try { reader.releaseLock(); } catch {}
     }
 
+    // A streamed tool request carries no text, and a mixed one still needs the
+    // tool executed — both cases hand off to the tool-aware blocking path.
+    if (sawToolCall) return false;
     return cumulative.length > 0;
   }
 

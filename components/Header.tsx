@@ -7,9 +7,7 @@ import { useWormGPT } from '../context/GlobalContext';
 import { countTokensForRequest } from '../utils/tokenManager';
 
 export const Header: React.FC<{ 
-  fingerprint?: string;
   onNewSession: () => void;
-  activeAgentStatus: string | null;
   onOpenModelSelector: (mode?: 'text' | 'vision') => void;
   onToggleTelemetry?: () => void;
   isTelemetryOpen?: boolean;

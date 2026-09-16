@@ -1,5 +1,5 @@
-import { AppSettings, Message } from '../types';
-import { getEffectiveSystemInstruction } from '../utils/promptUtils';
+import { AppSettings, Message, ToolInvocation } from '../types';
+import { getEffectiveSystemInstruction, truncateSystemInstruction } from '../utils/promptUtils';
 import { OpenAICompatibleService, StreamYield } from './openaiCompatible';
 
 function estimateTokens(text: string): number {
@@ -73,7 +73,7 @@ class CohereService extends OpenAICompatibleService {
 
     let systemPrompt = getEffectiveSystemInstruction(settings, messages);
     if (estimateTokens(systemPrompt) > 1500) {
-      systemPrompt = systemPrompt.substring(0, 6000) + '\n[System prompt truncated for token limit]';
+      systemPrompt = truncateSystemInstruction(systemPrompt, 6000);
     }
     usedTokens += estimateTokens(systemPrompt);
 
@@ -121,6 +121,10 @@ class CohereService extends OpenAICompatibleService {
     const url = this.getChatCompletionsUrl();
     let accumulatedText = '';
     let toolSources: { title: string; url: string }[] = [];
+    // Reported so the UI can render a real result card per executed call.
+    const toolInvocations: ToolInvocation[] = [];
+    // Set once if this model rejects function declarations (then retried plain).
+    let toolFallbackUsed = false;
     const MAX_TURNS = 10;
     const decoder = new TextDecoder();
     let currentApiMessages = [...apiMessages];
@@ -155,6 +159,15 @@ class CohereService extends OpenAICompatibleService {
             const jsonError = JSON.parse(errorText);
             if (jsonError.message) errorText = jsonError.message;
           } catch {}
+          if (requestBody?.tools && !toolFallbackUsed && /tool|function/i.test(errorText)) {
+            // This model does not accept function declarations — retry without
+            // them so the turn still produces an answer.
+            toolFallbackUsed = true;
+            delete requestBody.tools;
+            delete requestBody.tool_choice;
+            console.warn('[Cohere] Tool declarations rejected — retrying without tools.');
+            continue;
+          }
           throw new Error(`Cohere Error ${response.status}: ${errorText || response.statusText}`);
         }
 
@@ -244,9 +257,10 @@ class CohereService extends OpenAICompatibleService {
           for (const tc of toolCallsArray) {
             const execStr = getToolExecutingString(tc.name);
             accumulatedText += `${execStr}\n`;
-            yield { text: accumulatedText, images: [], sources: toolSources };
+            yield { text: accumulatedText, images: [], sources: toolSources, toolInvocations: [...toolInvocations] };
 
             const fixedArgs = validateAndFixToolArgs(tc.args, tc.name);
+            const startedAt = Date.now();
             const toolResultData = await executeToolCall({
               id: tc.id,
               type: 'function',
@@ -279,9 +293,23 @@ class CohereService extends OpenAICompatibleService {
               if (pr.error !== undefined) isError = true;
             } catch {}
 
+            let parsedArgs: any = {};
+            try { parsedArgs = JSON.parse(fixedArgs); } catch { parsedArgs = {}; }
+
+            toolInvocations.push({
+              state: 'result',
+              toolCallId: tc.id,
+              toolName: tc.name,
+              args: parsedArgs,
+              result: parsedResult,
+              startedAt,
+              completedAt: Date.now(),
+              latencyMs: Date.now() - startedAt
+            });
+
             const resultStr = getToolResultString(tc.name, isError);
             accumulatedText = accumulatedText.replace(execStr, resultStr);
-            yield { text: accumulatedText, images: [], sources: toolSources };
+            yield { text: accumulatedText, images: [], sources: toolSources, toolInvocations: [...toolInvocations] };
           }
           continue;
         } else {
