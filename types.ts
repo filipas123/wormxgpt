@@ -155,7 +155,7 @@ export interface Message {
   generatedBy?: GeneratedBy;
   // Error state
   isError?: boolean;
-  errorType?: 'network' | 'api_key' | 'rate_limit' | 'context_overflow' | 'model_unavailable' | 'unknown';
+  errorType?: 'network' | 'api_key' | 'rate_limit' | 'budget_exhausted' | 'context_overflow' | 'model_unavailable' | 'unknown';
   errorRaw?: string;
   // Routing log
   routingEvents?: RoutingEvent[];

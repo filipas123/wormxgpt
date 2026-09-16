@@ -6,9 +6,10 @@ import rehypeKatex from 'rehype-katex';
 import {
   Copy, Check, Terminal, Brain, User, Sparkles, Wrench, ChevronDown, ChevronRight,
   CheckCircle2, AlertCircle, Clock, Loader2, Cpu, Zap, AlertTriangle, RefreshCw,
-  ArrowRightLeft, Activity, Eye, Shield
+  ArrowRightLeft, Activity, Eye, Shield, Wallet
 } from 'lucide-react';
 import { Message, AppSettings, ToolInvocation, GeneratedBy, RoutingEvent } from '../types';
+import { classifyErrorText } from '../services/errorClassifier';
 import { InlineCode } from './CodeBlock';
 
 const CodeBlock = lazy(() => import('./CodeBlock'));
@@ -277,6 +278,7 @@ const ErrorPanel: React.FC<{ message: Message; onRetry?: () => void }> = ({ mess
 
   const errorLabels: Record<string, { label: string; icon: React.ReactNode; hint: string }> = {
     api_key: { label: 'API Key Error', icon: <Shield className="w-4 h-4" />, hint: 'Check your API key in Settings → Provider Keys' },
+    budget_exhausted: { label: 'Budget Exhausted', icon: <Wallet className="w-4 h-4" />, hint: 'That provider key hit its spend limit — top up, or switch provider / enable auto-fallback' },
     rate_limit: { label: 'Rate Limited', icon: <Clock className="w-4 h-4" />, hint: 'Too many requests — wait a moment or switch provider' },
     network: { label: 'Network Error', icon: <AlertTriangle className="w-4 h-4" />, hint: 'Check your internet connection and provider status' },
     context_overflow: { label: 'Context Too Long', icon: <Activity className="w-4 h-4" />, hint: 'Clear the conversation buffer or reduce context' },
@@ -355,22 +357,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
     }
   };
 
-  // Classify error from content
-  const isErrorMessage = message.isError || (
+  // Classify error from content. Beyond the explicit flags, provider failure
+  // prose that reached the transcript without metadata (legacy sessions, or a
+  // path that bypassed both router gates) is caught here by the shared
+  // classifier so it still renders as a themed ErrorPanel.
+  const proseType = classifyErrorText(message.content);
+  const isErrorMessage = message.isError || proseType !== null || (
     message.content?.startsWith('CRITICAL_FAILURE:') ||
     message.content?.startsWith('[ERROR]')
   );
 
-  const classifyError = (content: string) => {
-    if (content.includes('401') || content.includes('api key') || content.includes('unauthorized')) return 'api_key';
-    if (content.includes('429') || content.includes('rate limit')) return 'rate_limit';
-    if (content.includes('context') && content.includes('length')) return 'context_overflow';
-    if (content.includes('model') && (content.includes('not found') || content.includes('unavailable'))) return 'model_unavailable';
-    if (content.includes('fetch') || content.includes('network') || content.includes('ECONNREFUSED')) return 'network';
-    return 'unknown';
-  };
-
-  const errorType = message.errorType || (isErrorMessage ? classifyError(message.content?.toLowerCase() || '') : undefined);
+  const errorType = message.errorType || proseType || (isErrorMessage ? 'unknown' : undefined);
   const cleanContent = isErrorMessage
     ? message.content?.replace(/^CRITICAL_FAILURE:\s*/, '') || ''
     : message.content;
