@@ -1,6 +1,6 @@
 import Groq from "groq-sdk";
-import { AppSettings, Message } from "../types";
-import { getEffectiveSystemInstruction } from "../utils/promptUtils";
+import { AppSettings, Message, ToolInvocation } from "../types";
+import { getEffectiveSystemInstruction, truncateSystemInstruction } from "../utils/promptUtils";
 import { pruneHistory } from '../utils/tokenManager';
 import { validateAndFixToolArgs } from "../utils/toolHelpers";
 
@@ -34,7 +34,7 @@ export class GroqService {
     return this.apiKey || localStorage.getItem('groqApiKey') || process.env.GROQ_API_KEY || '';
   }
 
-  async *streamChat(settings: AppSettings, history: Message[], signal?: AbortSignal): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
+  async *streamChat(settings: AppSettings, history: Message[], signal?: AbortSignal): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[]; toolInvocations?: ToolInvocation[] }> {
     if (signal?.aborted) return;
     const lastMessage = history[history.length - 1];
     const prompt = lastMessage.content;
@@ -92,7 +92,7 @@ export class GroqService {
     const systemTokens = estimateTokens(systemPrompt);
     if (systemTokens > 1000) {
       // Keep first 3500 chars (~875 tokens)
-      systemPrompt = systemPrompt.slice(0, 3500) + '...';
+      systemPrompt = truncateSystemInstruction(systemPrompt, 3500);
       console.log(`System prompt truncated from ${systemTokens} to ~875 tokens`);
     }
 
@@ -150,6 +150,8 @@ export class GroqService {
 
       let accumulatedText = '';
       let toolSources: { title: string; url: string }[] = [];
+      // Reported so the UI can render a real result card per executed call.
+      const toolInvocations: ToolInvocation[] = [];
       const MAX_TURNS = 10;
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -169,7 +171,7 @@ export class GroqService {
         const systemMsg = messages.find(m => m.role === 'system');
         const prunedMessages = systemMsg ? [systemMsg, ...recentMsgs.filter(m => m !== systemMsg)] : recentMsgs;
 
-        const stream = await client.chat.completions.create({
+        const makeRequest = (withTools: boolean) => client.chat.completions.create({
           model: settings.model,
           messages: prunedMessages as any,
           temperature: settings.temperature,
@@ -178,8 +180,24 @@ export class GroqService {
           presence_penalty: settings.presencePenalty ?? 0.0,
           frequency_penalty: settings.frequencyPenalty ?? 0.0,
           stream: true,
-          tools: tools
+          tools: withTools ? tools : undefined
         });
+
+        let stream: any;
+        try {
+          stream = await makeRequest(!!tools);
+        } catch (toolErr: any) {
+          const msg = String(toolErr?.message || '');
+          if (tools && /tool|function/i.test(msg)) {
+            // The selected model does not support function calling — retry plain
+            // so the turn still produces an answer.
+            console.warn('[Groq] Tool declarations rejected — retrying without tools:', msg);
+            tools = undefined;
+            stream = await makeRequest(false);
+          } else {
+            throw toolErr;
+          }
+        }
 
         const turnToolCalls: Record<number, { id: string; name: string; args: string }> = {};
         let isMakingToolCall = false;
@@ -232,8 +250,9 @@ export class GroqService {
             const { getToolExecutingString, getToolResultString } = await import('../utils/toolHelpers');
             const execStr = getToolExecutingString(tc.name);
             accumulatedText += `${execStr}\n`;
-            yield { text: accumulatedText, images: [], sources: toolSources };
+            yield { text: accumulatedText, images: [], sources: toolSources, toolInvocations: [...toolInvocations] };
 
+            const startedAt = Date.now();
             const toolResultData = await executeToolCall({
               id: tc.id,
               type: 'function',
@@ -268,9 +287,23 @@ export class GroqService {
               if (parsedResult.error !== undefined) isError = true;
             } catch (e) { isError = false; }
 
+            let parsedArgs: any = {};
+            try { parsedArgs = JSON.parse(validateAndFixToolArgs(tc.args, tc.name)); } catch { parsedArgs = {}; }
+
+            toolInvocations.push({
+              state: 'result',
+              toolCallId: tc.id,
+              toolName: tc.name,
+              args: parsedArgs,
+              result: parsedResult,
+              startedAt,
+              completedAt: Date.now(),
+              latencyMs: Date.now() - startedAt
+            });
+
             const resultStr = getToolResultString(tc.name, isError);
             accumulatedText = accumulatedText.replace(execStr, resultStr);
-            yield { text: accumulatedText, images: [], sources: toolSources };
+            yield { text: accumulatedText, images: [], sources: toolSources, toolInvocations: [...toolInvocations] };
           }
 
           continue;

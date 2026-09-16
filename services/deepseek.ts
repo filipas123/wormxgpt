@@ -2,6 +2,7 @@ import { Message, AppSettings } from '../types';
 import { pruneHistory } from '../utils/tokenManager';
 import { ATTACHED_TOOLS, validateAndFixToolArgs } from './tools';
 import { getEffectiveSystemInstruction } from '../utils/promptUtils';
+import { streamWithToolLoop } from './toolLoop';
 
 class DeepSeekService {
   private apiKey: string | null = null;
@@ -187,7 +188,7 @@ class DeepSeekService {
 
     for (const tc of toolCalls) {
       if (tc.name) {
-        const fixedArgs = validateAndFixToolArgs(tc.name, tc.args);
+        const fixedArgs = validateAndFixToolArgs(tc.args, tc.name);
         onToolCall?.(tc.name, fixedArgs);
         yield { type: 'tool_call', name: tc.name, args: fixedArgs, callId: tc.id };
       }
@@ -197,16 +198,13 @@ class DeepSeekService {
     settings: AppSettings,
     messages: Message[],
     signal?: AbortSignal
-  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[] }> {
-    if (signal?.aborted) return;
-    let accumulatedText = '';
-    for await (const chunk of this.generateContentStream(messages, settings)) {
-      if (signal?.aborted) return;
-      if (typeof chunk === 'string') {
-        accumulatedText += chunk;
-        yield { text: accumulatedText, images: [] };
-      }
-    }
+  ): AsyncGenerator<{ text: string; images: string[]; video?: string; audio?: string; sources?: { title: string; url: string }[]; toolInvocations?: import('../types').ToolInvocation[] }> {
+    // Tool calls surfaced by generateContentStream are executed and fed back
+    // here; the previous text-only wrapper discarded them, so a requested tool
+    // never ran and the model never received its result.
+    yield* streamWithToolLoop(settings, messages, signal, (msgs) =>
+      this.generateContentStream(msgs, settings)
+    );
   }
 }
 

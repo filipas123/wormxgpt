@@ -7,7 +7,7 @@ import { InputBar } from './components/InputBar';
 import { SettingsModal } from './components/SettingsModal/SettingsModal';
 import { ModelSelectorModal } from './components/ModelSelectorModal';
 import { ActiveArsenalModal } from './components/ActiveArsenalModal';
-import { ConfirmModal, ExportImportModal, Toast, AlertModal } from './components/Modals';
+import { ConfirmModal, ExportImportModal, Toast } from './components/Modals';
 import { NetworkTelemetryOverlay } from './components/NetworkTelemetryOverlay';
 import { PanicPurgeModal } from './components/PanicPurgeModal';
 import { SETTINGS_KEY, SESSIONS_KEY } from './constants';
@@ -33,11 +33,6 @@ const WormGPTApp: React.FC = () => {
   
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
-  const [alertInfo, setAlertInfo] = useState<{ open: boolean; title: string; message: string; type?: 'info' | 'success' | 'warning' | 'error' }>({
-    open: false,
-    title: '',
-    message: ''
-  });
 
   const [toast, setToast] = useState<{ visible: boolean; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({ 
     visible: false, 
@@ -112,9 +107,7 @@ const WormGPTApp: React.FC = () => {
         isSidebarOpen ? 'ml-16 sm:ml-72' : 'ml-16'
       }`}>
         <Header 
-          fingerprint="DARK-PRIME-X"
           onNewSession={handleNewSession}
-          activeAgentStatus={null}
           onOpenModelSelector={handleOpenModelSelector}
           onToggleTelemetry={() => setIsTelemetryOpen(prev => !prev)}
           isTelemetryOpen={isTelemetryOpen}
@@ -182,15 +175,6 @@ const WormGPTApp: React.FC = () => {
           isDanger={true}
           onConfirm={handleExecuteReset}
           onCancel={() => setConfirmResetOpen(false)}
-        />
-
-        {/* Alert Modal */}
-        <AlertModal 
-          isOpen={alertInfo.open}
-          title={alertInfo.title}
-          message={alertInfo.message}
-          type={alertInfo.type}
-          onClose={() => setAlertInfo(prev => ({ ...prev, open: false }))}
         />
 
         {/* Real-Time Network Activity Stream Overlay */}

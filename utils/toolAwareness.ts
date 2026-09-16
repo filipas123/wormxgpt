@@ -141,14 +141,20 @@ export function resolveToolDescriptor(name: string): ToolDescriptor | null {
 }
 
 /**
- * Returns all active armed tool descriptors for given settings
+ * Returns the tools the operator actually enabled — nothing else. The model must
+ * only ever see tools it is allowed to call, so the catalog is exactly the
+ * resolved `settings.enabledTools` set. This mirrors services/tools.ts
+ * `getDynamicTools`, which declares the same set natively; keeping both in step
+ * means the prompt and the request payload never disagree.
+ *
+ * When nothing is enabled at all, a small core baseline is used so the model is
+ * never handed an empty catalog while core tools are still declared.
  */
 export function getArmedToolsCatalog(settings: AppSettings): ToolDescriptor[] {
   const enabledNames = settings.enabledTools || [];
   const catalog: ToolDescriptor[] = [];
   const seenNames = new Set<string>();
 
-  // Resolve explicitly enabled tools
   for (const name of enabledNames) {
     const desc = resolveToolDescriptor(name);
     if (desc && !seenNames.has(desc.name)) {
@@ -157,7 +163,10 @@ export function getArmedToolsCatalog(settings: AppSettings): ToolDescriptor[] {
     }
   }
 
-  // If no tools or fewer than 2 tools are armed, inject core defaults
+  if (catalog.length > 0) return catalog;
+
+  // Nothing armed: fall back to the core baseline (same resolution as
+  // getDynamicTools) so the two lists stay identical.
   for (const defaultName of CORE_DEFAULT_TOOL_NAMES) {
     if (!seenNames.has(defaultName)) {
       const desc = resolveToolDescriptor(defaultName);
@@ -169,6 +178,68 @@ export function getArmedToolsCatalog(settings: AppSettings): ToolDescriptor[] {
   }
 
   return catalog;
+}
+
+/**
+ * True when the operator has armed at least one callable tool.
+ */
+export function hasArmedTools(settings: AppSettings): boolean {
+  return getArmedToolsCatalog(settings).length > 0;
+}
+
+/** Extension tools injected natively by services/tools.ts when MCP is enabled. */
+const EXTENSION_TOOL_NAMES = new Set([
+  'chrome_navigate', 'chrome_screenshot', 'chrome_extract_text', 'chrome_extract_links',
+  'chrome_click', 'chrome_fill', 'chrome_execute_js', 'get_windows_and_tabs'
+]);
+
+/**
+ * Whether a tool may actually be EXECUTED for these settings. The catalog the
+ * model sees already hides unarmed tools; this is the enforcement side, so a
+ * hallucinated or stale tool name can never run. MCP / browser-extension tools
+ * that getDynamicTools attaches natively stay callable while MCP is enabled.
+ */
+export function isToolArmed(settings: AppSettings, name: string): boolean {
+  if (!name || typeof name !== 'string') return false;
+
+  const cleanName = name.includes(':') ? name.split(':')[1] : name;
+  const target = normalizeToolKey(cleanName);
+  if (getArmedToolsCatalog(settings).some(t => normalizeToolKey(t.name) === target || normalizeToolKey(t.name) === normalizeToolKey(name))) {
+    return true;
+  }
+
+  if (settings.mcpEnabled) {
+    if (EXTENSION_TOOL_NAMES.has(cleanName) || EXTENSION_TOOL_NAMES.has(name)) return true;
+    if (name.includes(':') || name.startsWith('mcp_')) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Chain-of-thought scaffold that teaches the model how to reason about tool use
+ * before it acts. Emitted for Gemini, whose native thinking config lets it work
+ * through this plan internally before committing to a function call.
+ */
+export function getToolReasoningPrompt(settings: AppSettings): string {
+  if (getArmedToolsCatalog(settings).length === 0) return '';
+
+  const provider = String(settings.aiProvider || '').toLowerCase();
+  const model = String(settings.model || '').toLowerCase();
+  const isGemini = provider === 'gemini' || provider.startsWith('google') || model.startsWith('gemini');
+  if (!isGemini) return '';
+
+  return `### 🧠 CHAIN-OF-THOUGHT PROTOCOL — PLAN TOOL USE BEFORE YOU ACT
+Work through these steps in order, internally, before writing your final answer. Use your thinking budget for steps 1-5; only step 6 is spoken.
+
+1. **UNDERSTAND** — Restate the user's actual goal in one line. Identify exactly what would count as a correct answer.
+2. **ASSESS NEED** — Decide whether the answer depends on real-time, private, or exact data you cannot reliably recall (today's date, live prices, current docs, a specific URL, a computation). If it does, a tool is REQUIRED. If it is stable general knowledge, answer directly and call nothing.
+3. **SELECT** — From the ARMED TOOLS CATALOG above, pick the smallest set of tools that fully covers the need. Prefer one precise tool over several vague ones. Never reference a tool that is not in that catalog.
+4. **PLAN ARGUMENTS** — Derive every argument from the user's own request. Never invent identifiers, URLs, filenames, or dates. If a required argument is missing and cannot be inferred, ask the user instead of calling.
+5. **EXECUTE** — Emit the structured tool call block(s). Batch independent calls into a single turn.
+6. **VERIFY & ANSWER** — When the tool output returns, check that it genuinely answers step 1. If it is empty, malformed, or only partially relevant, refine the arguments and call again — up to 3 attempts total. If a tool keeps failing, say so plainly and answer with what you have. Never present a guess as retrieved data, and never invent a tool result.
+
+Do not print this plan as a numbered list unless the user asks for it — use it to drive your actions.`;
 }
 
 /**
@@ -210,8 +281,17 @@ Or markdown tool call block:
 
 The runtime intercepts your tool call, executes the tool, and provides you with the real-time verified findings in the next turn so you can formulate your complete, fact-checked response.
 
+CRITICAL: Never describe a tool call in prose (for example, do not write "Tool Call: GetCurrentDateTime" or "I will now call GetCurrentDateTime"). Only the structured block above actually executes a tool. Never invent, guess, or fabricate a tool result — wait for the runtime to return the real output.
+
 #### ARMED TOOLS CATALOG:
 ${toolEntries}
+
+#### TOOL VISIBILITY RULES (HARD CONSTRAINTS)
+- The catalog above is the COMPLETE set of tools you may call. Any tool not listed there is unavailable — never name it, never claim you used it, and never pretend its output exists.
+- The runtime may additionally attach extension tools natively in the request payload (MCP servers / browser extensions). If the API hands you those schemas, treat them as armed and call them with their declared fields; otherwise ignore them.
+- Call a tool only when the user's request actually needs the data it returns. For stable general knowledge, answer directly without calling anything.
+- Never invent, guess, or simulate a tool result. If a tool call fails or returns nothing usable, retry with corrected arguments (max 3 attempts), then say so plainly.
+- After a tool returns data, answer the user's question from THAT data — do not repeat the call or describe the call mechanics.
 `.trim();
 }
 
@@ -222,6 +302,19 @@ export interface ParsedToolCall {
   name: string;
   args: Record<string, any>;
   raw: string;
+}
+
+/**
+ * Matches chat-tuned models narrating a tool call in prose instead of emitting
+ * the documented structured block, e.g.
+ *   "**Tool Call:** GetCurrentDateTime"
+ *   "Tool Call: `SearchWeb`(query)"
+ *   "Calling tool: WebCrawler"
+ * Captures the tool name in group 1 and an optional inline argument list in
+ * group 2. Shared by the parser and the stripper so both agree on the span.
+ */
+function narrativeToolCallRegex(): RegExp {
+  return /(?:^|\n)[^\n]{0,80}?(?:\*\*)?(?:tool\s*call|tool_call|calling\s+(?:the\s+)?tool|invoking\s+(?:the\s+)?tool|invoke\s+tool)(?:\*\*)?\s*[:\uFF1A]?\s*(?:\*\*)?\s*`?([A-Za-z][A-Za-z0-9_.:-]{2,60})`?\s*(?:\(([^\n()]*)\))?/gi;
 }
 
 /**
@@ -315,7 +408,42 @@ export function parseToolCallsFromText(text: string): ParsedToolCall[] {
     });
   }
 
+  // 5. Narrative prose mentions such as "Tool Call: GetCurrentDateTime". These
+  //    are not a real protocol, but chat-tuned models emit them constantly.
+  //    Only treat a mention as a call when the name resolves to a tool we can
+  //    actually execute, so ordinary prose never triggers a bogus invocation.
+  const narrativeRegex = narrativeToolCallRegex();
+  while ((match = narrativeRegex.exec(text)) !== null) {
+    const raw = match[0].trim();
+    if (seenRaw.has(raw)) continue;
+    const name = match[1];
+    if (!name || !resolveToolDescriptor(name)) continue;
+    seenRaw.add(raw);
+    calls.push({
+      name,
+      args: safeParseArgs(match[2]),
+      raw
+    });
+  }
+
   return calls;
+}
+
+/**
+ * Removes the inline tool status lines that provider tool loops append to their
+ * answer text ("[✔] **Data Retrieved:** `X`"). Only call this when a real tool
+ * invocation card will display the output, otherwise the status line is the
+ * user's only confirmation that a tool ran.
+ */
+export function stripToolStatusMarkers(text: string): string {
+  if (!text) return '';
+  return text
+    // Provider tool loops append their own status lines to the answer text (see
+    // utils/toolHelpers.ts). They are internal bookkeeping rather than content,
+    // so they are only removed when a real tool card will display the output.
+    .replace(/^\[[⚡✔❌]\]\s*\*\*(?:Executing|Data Retrieved|Error):\*\*[^\n]*$/gmu, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 /**
@@ -328,5 +456,12 @@ export function stripToolCallsFromText(text: string): string {
     .replace(/```(?:tool_call|tool)\s*[\s\S]*?```/gi, '')
     .replace(/\[TOOL_CALL:\s*[a-zA-Z0-9_-]+\([\s\S]*?\)\]/gi, '')
     .replace(/(?:^|\n)call:[a-zA-Z0-9_-]+\s*\{[\s\S]*?\}(?=\n|$)/gi, '')
+    // Only drop a narrative mention when it names a tool we can actually run,
+    // so unrelated prose is never deleted.
+    .replace(narrativeToolCallRegex(), (match, name) => (name && resolveToolDescriptor(name) ? '' : match))
+    // Drop lines that held nothing but decoration (emoji) once the fabricated
+    // tool-call text was removed, without touching markdown rules or lists.
+    .replace(/^[ \t]*(?:[\p{Extended_Pictographic}\u200d\ufe0f\u{1F3FB}-\u{1F3FF}][ \t]*)+$/gmu, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
