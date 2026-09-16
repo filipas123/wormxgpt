@@ -69,6 +69,8 @@ export class ProviderRouter {
       featherless: 'featherlessApiKey', lambdaai: 'lambdaaiApiKey', nebius: 'nebiusApiKey',
       tinyfish: 'tinyfishApiKey',
       llm7: 'llm7ApiKey',
+      nanogpt: 'nanogptApiKey',
+      ovh: 'ovhApiKey',
       puter: 'puterApiKey',
     };
     return map[provider] || null;
