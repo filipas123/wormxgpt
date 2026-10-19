@@ -2,6 +2,10 @@
 
 > **Universal AI Orchestration Engine.** WormXGPT is a unified full-stack AI tooling platform and terminal harness containing both an ultra-responsive cyber-themed React Web Terminal and an autonomous CLI agent. It features 150+ native tools, 100 remote HTTPS Model Context Protocol (MCP) servers in an Active Arsenal, zero-trace hardware-fingerprinted local persistence, auto-fallback matrix across 77+ providers, multi-model selection per provider, and live interactive tool call visualization.
 
+Contact For Renting: [Telegram](http://t.me/MrXtesion) | [Discord](https://discord.com/users/784226549469151282) | [Signal](https://signal.me/#eu/Rrw50AAArK4LIJXc33dTtfn4ClG1Lse70_urvl0CT3JsXPIsXp1APqNwOFFv7IN4) 
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/cfcb8565-ae92-4f41-b0c8-8409db5a92d2" />
+
+
 ---
 
 ## 🌟 Core Architecture & Key Capabilities
